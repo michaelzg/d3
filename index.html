@@ -120,7 +120,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,#atlas-frame:focus-visi
 </main>
 <footer id="colophon" class="measure"><div class="brand">Hurricanes<br>2020—2025</div><p>Sources: <a href="https://www.nhc.noaa.gov/data/#hurdat">National Hurricane Center / HURDAT2</a>. Named Atlantic and Eastern Pacific storms that reached hurricane strength, 2020–2025. Six-hour positions are linearly interpolated; landfall records may fall between observations. Colors follow the Saffir–Simpson wind scale. Boundaries and city locations: <a href="https://www.naturalearthdata.com/">Natural Earth</a>. City proximity is geographic context, not confirmed storm impact. Historical observations, not a forecast.</p></footer>
 <button id="edition" type="button" aria-pressed="false"><i aria-hidden="true"></i><span class="edition-name">Dark</span></button>
-<noscript><p class="measure">JavaScript is required to draw the atlas. <a href="data/storms.json">Download the storm records</a>.</p></noscript>
+<noscript><p class="measure">JavaScript is required to draw the map. <a href="data/storms.json">Download the storm records</a>.</p></noscript>
 
 <script src="lib/d3.min.js"></script>
 <script src="lib/topojson-client.min.js"></script>
@@ -689,7 +689,7 @@ window.addEventListener('resize',queueResize);
 if(new URLSearchParams(location.search).has('debug')){
   window.__atlasDebug=Object.freeze({snapshot:()=>({frameCount,running:!!raf,inView,booted,time:S.time,t0:S.t0,t1:S.t1,playing:S.playing,mode:S.mode,selected:S.selected?.id??null,flightElapsed:S.fly?.elapsed??null,rotate:S.rotate.slice(),scale:S.scale,reducedMotion,overview,heroDraws,heroPixels:heroCanvas.width*heroCanvas.height,globePixels:canvas.width*canvas.height,nearbyCities:nearbyCities.map(c=>c.name),cityLabels:cityLabels.length,stateLines:mapContext.states.coordinates.length})});
 }
-})().catch(error=>{const loading=document.getElementById('loading');loading.classList.remove('off');loading.textContent='The atlas could not be loaded. Please reload to try again. '+error.message;loading.setAttribute('role','alert');});
+})().catch(error=>{const loading=document.getElementById('loading');loading.classList.remove('off');loading.textContent='The map could not be loaded. Please reload to try again. '+error.message;loading.setAttribute('role','alert');});
 </script>
 </body>
 </html>
