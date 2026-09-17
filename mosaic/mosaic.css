@@ -15,8 +15,6 @@
 
 /* A quiet gold spotlight, centered on the projected city rather than the card. */
 .panel.featured{border-color:#b99a52;box-shadow:0 0 0 1px #c6a55718,0 5px 24px #a57c2012}
-.panel.featured .point{fill:#a87924;opacity:.72}
-.panel.featured .center{fill:#8e651a}
 .panel.featured .region-meta{color:#8b6b30}
 .focus-glow{display:none;position:absolute;width:100px;height:100px;transform:translate(-50%,-50%);pointer-events:none}
 .featured .focus-glow{display:block}

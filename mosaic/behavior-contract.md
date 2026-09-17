@@ -9,3 +9,5 @@ Target: /mosaic/ served from the d3 static site.
 
 7. Each page load randomly selects 1–3 unique regions. These remain visible and highlighted for all counts 4–8 and after resimulation. Reload can choose a new set.
 8. Featured regions occupy the largest panel areas on desktop and phone; subtle gold glow pulses around their actual projected city centers. Nonfeatured regions have no glow. Reduced motion retains a still gold highlight.
+
+9. Panels fill most of the fixed banner with tight gaps while retaining staggered edges. All population dots and center markers share their colors across featured and nonfeatured panels; the gold pulse remains.

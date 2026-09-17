@@ -20,3 +20,10 @@ Manual scoped code review completed: checked all composition bounds, safe popula
 - PASS: 450 randomized layout checks across 30 population/selection scenarios, five counts, and three widths verified 1–3 selected regions, largest areas, and no overlaps.
 - INSPECTED: 4.8-second CSS pulse; reduced-motion disables animations and preserves the static highlight. Reduced-motion preference was not toggled in the browser.
 - Manual source review: verified initialization occurs once, selected regions remain in the visible subset, slot allocation is unique, total population uses the displayed subset, and SVG accessible titles identify highlighted regions. No actionable findings. Syntax and whitespace checks pass; helper automation remains unavailable.
+
+## Tighter panels and consistent dots
+
+- PASS: revised desktop and phone compositions use at least 86% of banner area across 450 randomized checks (30 scenarios × 5 counts × 3 widths). Bounds, no overlaps, and larger featured panels all pass.
+- PASS: desktop and phone screenshots show enlarged panels with tight gutters and staggered edges. Eight-panel phone has no horizontal overflow.
+- PASS: browser computed styles report rgb(190, 86, 58) and opacity 0.65 for every featured and nonfeatured population dot. Gold pulse remains active (`gold-breathe`).
+- Manual closeout review found no actionable issues; syntax and whitespace checks pass. Autoreview helper remains unavailable in the text-only installation.
