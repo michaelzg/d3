@@ -3,14 +3,46 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tempest Atlas</title>
+<title>Hurricanes, 2020–2025</title>
 <link rel="icon" href="data:,">
-<meta name="description" content="An interactive globe of every named hurricane since 2020, explorable across time and space.">
+<meta name="description" content="Every named storm that reached hurricane strength in the Atlantic and eastern Pacific between 2020 and 2025, mapped and animated from six-hour observations.">
+<script>
+/* The page follows the reader's own clock: light from 07:00, dark from 19:00.
+   Resolved before first paint so nothing flashes the wrong theme. */
+(function(){try{
+  var h=new Date().getHours(), era=(h>=19||h<7)?'night':'day', auto=era==='night'?'dark':'light', saved=null;
+  try{saved=JSON.parse(localStorage.getItem('hurricanes-theme')||'null');}catch(e){}
+  /* A manual choice lasts only as long as the era it was made in. */
+  var ok=saved&&saved.era===era&&(saved.theme==='dark'||saved.theme==='light');
+  document.documentElement.dataset.theme=ok?saved.theme:auto;
+}catch(e){document.documentElement.dataset.theme='light';}})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--paper:#fff;--paper-2:#f7f7f5;--ink:#171716;--ink-70:#555550;--ink-50:#777770;--ink-35:#99998f;--rule:#e5e5df;--rule-2:#d4d4cc;--measure:1240px;--sans:'Libre Franklin',Helvetica,Arial,sans-serif;--serif:'Newsreader',Georgia,serif}
+:root{
+  color-scheme:light;
+  --paper:#fff;--paper-2:#f7f7f5;--ink:#171716;--ink-70:#555550;--ink-50:#777770;--ink-35:#99998f;--rule:#e5e5df;--rule-2:#d4d4cc;
+  --measure:1240px;--sans:'Libre Franklin',Helvetica,Arial,sans-serif;--serif:'Newsreader',Georgia,serif;
+  /* Saffir-Simpson ramp. On paper, intensity darkens toward oxblood. */
+  --cat-td:#b9b9b9;--cat-ts:#91918a;--cat-1:#efcd3a;--cat-2:#f29e38;--cat-3:#e8672a;--cat-4:#cf2f24;--cat-5:#7d1010;
+  /* basemap */
+  --map-land:#f0f0eb;--map-coast:#d4d4ca;--map-border:#d6d6ce;--map-state:#dadad2;
+  --veil:255,255,255;  /* rgb of the page, for limb fade, track casing and label halos */
+  --city-dot:#8a897b;--city-label:#6b6a5c;--city-near:#1b1b18;
+  --hero-alpha:.78;--hero-weight:.85;
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#0c0c0b;--paper-2:#171714;--ink:#ece9e1;--ink-70:#a5a29a;--ink-50:#86837b;--ink-35:#63605a;--rule:#24241f;--rule-2:#33332d;
+  /* On black the ramp inverts its logic: intensity climbs in luminance, not depth. */
+  --cat-td:#4a4841;--cat-ts:#6d6a61;--cat-1:#e3c04a;--cat-2:#ef9a3f;--cat-3:#f26f33;--cat-4:#f4482f;--cat-5:#ff7d6d;
+  --map-land:#1b1b18;--map-coast:#3b3b34;--map-border:#2f2f29;--map-state:#272723;
+  --veil:12,12,11;
+  --city-dot:#5c5a51;--city-label:#8a877d;--city-near:#f4f1e8;
+  --hero-alpha:.62;--hero-weight:.9;
+}
 *{box-sizing:border-box;margin:0;padding:0}[hidden]{display:none!important}
 html,body{background:var(--paper);color:var(--ink);font:13px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}a{color:inherit;text-underline-offset:4px}
@@ -18,9 +50,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,#atlas-frame:focus-visi
 .measure{width:min(var(--measure),calc(100% - 80px));margin-inline:auto}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .eyebrow,h2{font-size:10px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-50)}
 #hero{position:relative;min-height:min(760px,92svh);display:flex;align-items:center;isolation:isolate;overflow:hidden;border-bottom:1px solid var(--rule)}
-#hero-field{position:absolute;inset:0;width:100%;height:100%;z-index:-1;opacity:.38;animation:field-in 2.5s ease both}@keyframes field-in{from{opacity:0}to{opacity:.38}}
-.hero-copy{padding-block:90px}#hero h1{font:400 clamp(56px,9vw,150px)/.92 var(--serif);letter-spacing:-.045em;margin:40px 0 26px;max-width:900px}#hero h1 em{font-weight:400}
-.lede{font:400 clamp(18px,2vw,24px)/1.5 var(--serif);max-width:440px;background:#ffffffb8}.hero-links{display:flex;gap:28px;margin-top:38px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+#hero-field{position:absolute;inset:0;width:100%;height:100%;z-index:-1;opacity:var(--hero-alpha);animation:field-in 2.5s ease both}@keyframes field-in{from{opacity:0}to{opacity:var(--hero-alpha)}}
+.hero-copy{padding-block:90px}#hero h1{font:400 clamp(56px,9vw,150px)/.92 var(--serif);letter-spacing:-.045em;margin:34px 0 0;max-width:900px}#hero h1 em{font-weight:400}
+.hero-dates{font:400 clamp(20px,2.4vw,30px)/1.2 var(--serif);color:var(--ink-50);margin:14px 0 30px;font-variant-numeric:lining-nums}
+.lede{font:400 clamp(18px,2vw,24px)/1.5 var(--serif);max-width:440px;background:rgba(var(--veil),.72)}.hero-links{display:flex;gap:28px;margin-top:38px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
 #ledger{display:grid;grid-template-columns:repeat(5,1fr);padding-block:26px;border-bottom:1px solid var(--rule)}.ledger-item{border-left:1px solid var(--rule);padding:0 24px}.ledger-item:first-child{border:0;padding-left:0}.ledger-item b{display:block;font:400 clamp(32px,4vw,54px)/1 var(--serif);font-variant-numeric:tabular-nums}.ledger-item span{display:block;font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin-top:9px;color:var(--ink-50)}
 #atlas{padding-top:84px;scroll-margin-top:24px}#atlas>.section-head{display:flex;justify-content:space-between;align-items:center;gap:24px}.section-head h2{color:var(--ink)}
 #years{display:flex;gap:24px;align-items:center}.year{font-size:14px;min-height:44px;color:var(--ink-35);border-bottom:1px solid transparent;transition:color .2s}.year:hover{color:var(--ink)}.year.on{color:var(--ink);border-color:var(--ink)}
@@ -33,46 +66,49 @@ button:focus-visible,a:focus-visible,input:focus-visible,#atlas-frame:focus-visi
 #quiet{font:italic 22px var(--serif);color:var(--ink-35)}#vitals .storm-name{font:400 32px var(--serif);color:var(--ink);margin-bottom:12px}#vitals p{margin:6px 0;line-height:1.8}#vitals details{pointer-events:auto;margin-top:12px}#vitals summary{cursor:pointer;font-size:10px}#vitals ul{list-style:none;font-size:10px;line-height:1.8;margin-top:8px}
 #nearby-note{font-size:10px;line-height:1.8;margin-top:24px;max-width:210px;color:var(--ink-50)}#nearby-note:empty{display:none}
 #timeline{display:flex;align-items:center;gap:20px;width:min(720px,100%);margin:4px auto 0;color:var(--ink-50)}#play{width:36px;height:36px;display:grid;place-items:center;flex:none}#play svg{width:11px;height:11px;fill:var(--ink-50)}#play .ic-pause,#play .ic-replay{display:none}body.playing #play .ic-play{display:none}body.playing #play .ic-pause{display:block}
-#track{flex:1;min-width:0}#scrubber{display:block;appearance:none;width:100%;height:30px;background:transparent;cursor:ew-resize}#scrubber::-webkit-slider-runnable-track{height:1px;background:#d7d7cf}#scrubber::-webkit-slider-thumb{appearance:none;height:5px;width:5px;border-radius:50%;background:var(--ink);margin-top:-2px}#scrubber::-moz-range-track{height:1px;background:#d7d7cf}#scrubber::-moz-range-thumb{height:5px;width:5px;border:0;background:var(--ink);border-radius:50%}
+#track{flex:1;min-width:0}#scrubber{display:block;appearance:none;width:100%;height:30px;background:transparent;cursor:ew-resize}#scrubber::-webkit-slider-runnable-track{height:1px;background:var(--rule-2)}#scrubber::-webkit-slider-thumb{appearance:none;height:5px;width:5px;border-radius:50%;background:var(--ink);margin-top:-2px}#scrubber::-moz-range-track{height:1px;background:var(--rule-2)}#scrubber::-moz-range-thumb{height:5px;width:5px;border:0;background:var(--ink);border-radius:50%}
 #clock{font-size:10px;font-variant-numeric:tabular-nums;white-space:nowrap}#clock .h{display:none}#back{font-size:10px;color:var(--ink-50);min-height:36px;display:none;position:absolute;left:0;bottom:18px}body.storm #back{display:block}
 .caption{display:flex;justify-content:center;align-items:center;gap:18px;margin-top:16px;color:var(--ink-35);font-size:9px}#legend{display:flex;gap:12px}#legend span{display:flex;align-items:center;gap:4px;font-size:9px}#legend i{width:10px;height:2px;background:var(--cc)}
-.city-key{display:flex;align-items:center;gap:6px}.city-key i{width:5px;height:5px;border-radius:50%;flex:none}.city-key i.far{background:#8a897b}.city-key i.near{background:#1b1b18;margin-left:10px}
-#tip{position:absolute;pointer-events:none;opacity:0;background:#ffffffeb;padding:8px 10px;max-width:calc(100% - 16px);z-index:4;transition:opacity .15s}#tip.on{opacity:1}#tip .n{font:21px var(--serif)}#tip .m{font-size:10px;color:var(--ink-50)}
+.city-key{display:flex;align-items:center;gap:6px}.city-key i{width:5px;height:5px;border-radius:50%;flex:none}.city-key i.far{background:var(--city-dot)}.city-key i.near{background:var(--city-near);margin-left:10px}
+#tip{position:absolute;pointer-events:none;opacity:0;background:rgba(var(--veil),.92);padding:8px 10px;max-width:calc(100% - 16px);z-index:4;transition:opacity .15s}#tip.on{opacity:1}#tip .n{font:21px var(--serif)}#tip .m{font-size:10px;color:var(--ink-50)}
 #loading{position:absolute;inset:0;display:grid;place-items:center;background:var(--paper);font:italic 24px var(--serif);z-index:9}#loading.off{opacity:0;pointer-events:none}
 #index{padding-top:100px;scroll-margin:24px}.section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px}#index .section-head{border-top:1px solid var(--rule);padding:20px 0 28px}.section-head p{color:var(--ink-50);font:italic 17px var(--serif);margin-top:8px}
 #count{display:flex;gap:24px;align-items:center;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-50)}#sort{display:flex;gap:12px}#sort button{font-size:9px;min-height:36px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-35)}#sort button.on{color:var(--ink)}
 #cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:0 28px}.card{display:block;text-align:left;width:100%;padding:24px 10px;border-top:1px solid var(--rule);min-width:0;transition:background .2s}.card:hover,.card.sel{background:var(--paper-2)}.card-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.card h3{font:400 28px/1 var(--serif);display:flex;align-items:center;gap:8px}.live-dot{display:none;width:5px;height:5px;background:var(--cc);border-radius:50%}.card.live .live-dot{display:block}.cat{font-size:9px;font-weight:600;letter-spacing:.08em;white-space:nowrap;text-transform:uppercase;display:flex;align-items:center;gap:6px}.cat i{width:6px;height:6px;border-radius:50%;background:var(--cc)}.card-meta{font-size:10px;color:var(--ink-50);margin-top:8px}.card-bottom{display:flex;justify-content:space-between;align-items:flex-end;margin-top:14px;gap:10px}.stats{display:flex;gap:12px}.stat{display:flex;flex-direction:column;gap:2px}.stat b{font-size:14px;font-weight:500;font-variant-numeric:tabular-nums}.stat small{font-size:8px;color:var(--ink-35)}.stat span{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-35)}.spark{width:88px;height:30px;flex:none}.spark path.a{fill:var(--cc);opacity:.15}.spark path.l{fill:none;stroke:var(--cc);stroke-width:1}.spark line{stroke:var(--rule);stroke-width:1}.empty{font:italic 24px var(--serif);padding:40px}
 #colophon{display:flex;justify-content:space-between;gap:40px;border-top:1px solid var(--rule);padding:28px 0 50px;margin-top:60px;font-size:10px;color:var(--ink-50)}#colophon p{max-width:670px}#colophon .brand{font:italic 28px var(--serif);color:var(--ink);white-space:nowrap}
-@media(max-width:859px){.measure{width:calc(100% - 36px)}.hero-copy{padding-block:64px}#hero{min-height:min(720px,92svh)}#ledger{grid-template-columns:repeat(3,1fr);gap:24px 0}.ledger-item{padding:0 14px}.ledger-item:nth-child(4){border:0;padding-left:0}#atlas{padding-top:50px}#atlas>.section-head{align-items:flex-start;flex-direction:column;gap:18px}#years{width:100%;justify-content:space-between;gap:8px}.year{font-size:13px}#map-cell{height:510px}#mast{top:30px;max-width:none}#title{font-size:31px}#subtitle{margin-top:7px}#readout{position:relative;top:auto;right:auto;width:100%;padding:0 0 16px;min-height:90px}#readout h3{margin-bottom:14px}#active-rows{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}#nearby-note{max-width:none;margin-top:14px}#back{position:static;padding-bottom:16px}#timeline{gap:12px}#vitals{max-width:320px}.caption{flex-wrap:wrap;gap:10px;font-size:8px}#index{padding-top:65px}#index .section-head{flex-direction:column;gap:16px}#count{flex-wrap:wrap}#colophon{flex-direction:column;gap:20px}}
+#edition{position:fixed;right:22px;bottom:20px;z-index:20;display:flex;align-items:center;gap:8px;min-height:36px;padding:9px 15px;border:1px solid var(--rule-2);border-radius:999px;background:var(--paper);color:var(--ink-50);font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;transition:color .2s,border-color .2s}
+#edition:hover{color:var(--ink);border-color:var(--ink-35)}#edition i{width:8px;height:8px;border-radius:50%;border:1px solid currentColor;background:linear-gradient(90deg,currentColor 0 50%,transparent 50%)}
+@media(max-width:859px){#edition{right:14px;bottom:14px;padding:9px 12px}.measure{width:calc(100% - 36px)}.hero-copy{padding-block:64px}#hero{min-height:min(720px,92svh)}#ledger{grid-template-columns:repeat(3,1fr);gap:24px 0}.ledger-item{padding:0 14px}.ledger-item:nth-child(4){border:0;padding-left:0}#atlas{padding-top:50px}#atlas>.section-head{align-items:flex-start;flex-direction:column;gap:18px}#years{width:100%;justify-content:space-between;gap:8px}.year{font-size:13px}#map-cell{height:510px}#mast{top:30px;max-width:none}#title{font-size:31px}#subtitle{margin-top:7px}#readout{position:relative;top:auto;right:auto;width:100%;padding:0 0 16px;min-height:90px}#readout h3{margin-bottom:14px}#active-rows{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}#nearby-note{max-width:none;margin-top:14px}#back{position:static;padding-bottom:16px}#timeline{gap:12px}#vitals{max-width:320px}.caption{flex-wrap:wrap;gap:10px;font-size:8px}#index{padding-top:65px}#index .section-head{flex-direction:column;gap:16px}#count{flex-wrap:wrap}#colophon{flex-direction:column;gap:20px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
-@media print{#hero{min-height:300px}.hero-copy{padding:30px 0}#hero h1{font-size:70px}.measure{width:100%}#years,#back,#timeline,.hero-links,#sort{display:none!important}#atlas,#index{padding-top:25px}#map-cell{height:500px}#readout{position:static;width:100%}#cards{grid-template-columns:repeat(2,minmax(0,1fr))}.card{break-inside:avoid}#colophon{margin-top:20px}*{animation:none!important}}
+@media print{:root,:root[data-theme="dark"]{color-scheme:light;--paper:#fff;--paper-2:#f7f7f5;--ink:#171716;--ink-70:#555550;--ink-50:#777770;--ink-35:#99998f;--rule:#e5e5df;--rule-2:#d4d4cc;--cat-td:#b9b9b9;--cat-ts:#91918a;--cat-1:#efcd3a;--cat-2:#f29e38;--cat-3:#e8672a;--cat-4:#cf2f24;--cat-5:#7d1010;--veil:255,255,255;--city-dot:#8a897b;--city-label:#6b6a5c;--city-near:#1b1b18}#edition{display:none!important}#hero{min-height:300px}.hero-copy{padding:30px 0}#hero h1{font-size:70px}.measure{width:100%}#years,#back,#timeline,.hero-links,#sort{display:none!important}#atlas,#index{padding-top:25px}#map-cell{height:500px}#readout{position:static;width:100%}#cards{grid-template-columns:repeat(2,minmax(0,1fr))}.card{break-inside:avoid}#colophon{margin-top:20px}*{animation:none!important}}
 </style>
 </head>
 <body>
 <header id="hero">
   <canvas id="hero-field" aria-hidden="true"></canvas>
   <div class="measure hero-copy">
-    <div class="eyebrow">A moving record / 2020—2025</div>
-    <h1>Tempest<br><em>Atlas.</em></h1>
-    <p class="lede">Six seasons of hurricanes, traced across two oceans. An atlas of where they formed, how they grew, and what they left behind.</p>
-    <nav class="hero-links" aria-label="Explore the atlas"><a href="#atlas">Explore the globe ↓</a><a href="#index">Browse the index</a></nav>
+    <div class="eyebrow">National Hurricane Center · HURDAT2</div>
+    <h1>Hurricanes</h1>
+    <p class="hero-dates">2020 until 2025</p>
+    <p class="lede">Every named storm that reached hurricane strength in the Atlantic and eastern Pacific. Positions are recorded every six hours.</p>
+    <nav class="hero-links" aria-label="Sections"><a href="#atlas">The map ↓</a><a href="#index">The storm list</a></nav>
   </div>
 </header>
 <main>
 <section id="ledger" class="measure" aria-label="Dataset statistics"></section>
 <section id="atlas" class="measure" aria-labelledby="plate-title">
   <div class="section-head">
-    <h2 id="plate-title">The seasons, in motion</h2><nav id="years" aria-label="Focus a hurricane season"></nav>
+    <h2 id="plate-title">Tracks by season</h2><nav id="years" aria-label="Focus a hurricane season"></nav>
   </div>
   <div id="atlas-frame" role="group" tabindex="0" aria-labelledby="plate-title" aria-describedby="map-description hint">
     <div id="map-cell">
       <canvas id="globe" role="img" aria-label="Hurricane tracks on an interactive globe" aria-describedby="map-description">Hurricane track map. Use the storm index below for names, dates and intensity, and select a storm for its landfall details.</canvas>
       <div id="mast"><h3 id="title"></h3><div id="subtitle"></div></div>
       <div id="tip"><div class="n"></div><div class="m"></div></div>
-      <div id="loading" role="status">Charting the atlas…</div>
+      <div id="loading" role="status">Loading…</div>
     </div>
-    <aside id="readout" aria-label="Storm notes"><h3>IN THE CURRENT</h3><div id="active-rows"></div><p id="quiet">Between storms.</p><div id="vitals" hidden></div><p id="nearby-note"></p></aside>
-    <button id="back">← Return to season</button>
+    <aside id="readout" aria-label="Storm notes"><h3>ACTIVE STORMS</h3><div id="active-rows"></div><p id="quiet">No active storms.</p><div id="vitals" hidden></div><p id="nearby-note"></p></aside>
+    <button id="back">← Back to the season</button>
     <div id="timeline"><div id="transport"><button id="play" aria-label="Play" title="Play / pause (Space)"><svg class="ic-play" viewBox="0 0 14 14" aria-hidden="true"><path d="M3.5 1.5v11l9-5.5z"/></svg><svg class="ic-pause" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 1.5h3v11h-3zM8.5 1.5h3v11h-3z"/></svg><svg class="ic-replay" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7a4.5 4.5 0 1 0 1.3-3.2" stroke="white" fill="none"/></svg></button></div><div id="track"><input id="scrubber" type="range" min="0" max="10000" value="0" step="1" aria-label="Storm timeline"></div><div id="clock"><span class="d">—</span><span class="h"></span></div></div>
   </div>
   <div class="caption"><span>Wind intensity</span><div id="legend"></div><span class="city-key"><i class="far"></i>Major cities<i class="near"></i>Within 600 km of an active storm</span></div>
@@ -80,9 +116,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,#atlas-frame:focus-visi
   <p id="hint" class="sr-only">Drag horizontally to rotate. Scroll to read. Ctrl or Command plus scroll to zoom. Focus the map and press Space to pause, or arrows to scrub.</p>
   <p id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
 </section>
-<section id="index" class="measure" aria-labelledby="index-title"><div class="section-head"><div><h2 id="index-title">Plate II — The index</h2><p>A record of each storm. Follows the selected season.</p></div><div id="count"><span><b id="n">0</b> hurricanes</span><div id="sort" aria-label="Sort storms"><button data-s="time" class="on" aria-pressed="true">By date</button><button data-s="peak" aria-pressed="false">By intensity</button></div></div></div><div id="cards"></div></section>
+<section id="index" class="measure" aria-labelledby="index-title"><div class="section-head"><div><h2 id="index-title">Storm list</h2><p>Every storm in the season selected above.</p></div><div id="count"><span><b id="n">0</b> hurricanes</span><div id="sort" aria-label="Sort storms"><button data-s="time" class="on" aria-pressed="true">By date</button><button data-s="peak" aria-pressed="false">By intensity</button></div></div></div><div id="cards"></div></section>
 </main>
-<footer id="colophon" class="measure"><div class="brand">Tempest Atlas.</div><p>Sources: <a href="https://www.nhc.noaa.gov/data/#hurdat">National Hurricane Center / HURDAT2</a>. Named Atlantic and Eastern Pacific storms that reached hurricane strength, 2020–2025. Six-hour positions are linearly interpolated; landfall records may fall between observations. Colors follow the Saffir–Simpson wind scale. Boundaries and city locations: <a href="https://www.naturalearthdata.com/">Natural Earth</a>. City proximity is geographic context, not confirmed storm impact. Historical observations, not a forecast.</p></footer>
+<footer id="colophon" class="measure"><div class="brand">Hurricanes<br>2020—2025</div><p>Sources: <a href="https://www.nhc.noaa.gov/data/#hurdat">National Hurricane Center / HURDAT2</a>. Named Atlantic and Eastern Pacific storms that reached hurricane strength, 2020–2025. Six-hour positions are linearly interpolated; landfall records may fall between observations. Colors follow the Saffir–Simpson wind scale. Boundaries and city locations: <a href="https://www.naturalearthdata.com/">Natural Earth</a>. City proximity is geographic context, not confirmed storm impact. Historical observations, not a forecast.</p></footer>
+<button id="edition" type="button" aria-pressed="false"><i aria-hidden="true"></i><span class="edition-name">Dark</span></button>
 <noscript><p class="measure">JavaScript is required to draw the atlas. <a href="data/storms.json">Download the storm records</a>.</p></noscript>
 
 <script src="lib/d3.min.js"></script>
@@ -92,14 +129,30 @@ button:focus-visible,a:focus-visible,input:focus-visible,#atlas-frame:focus-visi
 'use strict';
 const RAD = Math.PI/180;
 const CATS = [
-  {k:-1, short:'TD',   name:'Depression',  color:'#b9b9b9'},
-  {k:0,  short:'TS',   name:'Trop. Storm', color:'#91918a'},
-  {k:1,  short:'Cat 1',name:'Category 1',  color:'#efcd3a'},
-  {k:2,  short:'Cat 2',name:'Category 2',  color:'#f29e38'},
-  {k:3,  short:'Cat 3',name:'Category 3',  color:'#e8672a'},
-  {k:4,  short:'Cat 4',name:'Category 4',  color:'#cf2f24'},
-  {k:5,  short:'Cat 5',name:'Category 5',  color:'#7d1010'},
+  {k:-1, short:'TD',   name:'Depression',  v:'--cat-td', color:'#b9b9b9'},
+  {k:0,  short:'TS',   name:'Trop. Storm', v:'--cat-ts', color:'#91918a'},
+  {k:1,  short:'Cat 1',name:'Category 1',  v:'--cat-1',  color:'#efcd3a'},
+  {k:2,  short:'Cat 2',name:'Category 2',  v:'--cat-2',  color:'#f29e38'},
+  {k:3,  short:'Cat 3',name:'Category 3',  v:'--cat-3',  color:'#e8672a'},
+  {k:4,  short:'Cat 4',name:'Category 4',  v:'--cat-4',  color:'#cf2f24'},
+  {k:5,  short:'Cat 5',name:'Category 5',  v:'--cat-5',  color:'#7d1010'},
 ];
+/* Canvas cannot read CSS variables, so the palette is sampled from the live
+   tokens on every theme change. The stylesheet stays the single source. */
+const catVar = k => CATS[k+1].v;
+let theme = document.documentElement.dataset.theme==='dark' ? 'dark' : 'light';
+const P = {};
+function readPalette(){
+  const cs=getComputedStyle(document.documentElement), v=n=>cs.getPropertyValue(n).trim();
+  for (const c of CATS) c.color=v(c.v);
+  P.land=v('--map-land');P.coast=v('--map-coast');P.border=v('--map-border');P.state=v('--map-state');
+  P.cityDot=v('--city-dot');P.cityLabel=v('--city-label');P.cityNear=v('--city-near');
+  P.ink=v('--ink');P.inkQuiet=v('--ink-50');P.paper=v('--paper');
+  P.veil=v('--veil');
+  P.veilAt=a=>`rgba(${P.veil},${a})`;
+  P.heroWeight=parseFloat(v('--hero-weight'))||.65;
+}
+readPalette();
 const catOf = w => w>=137?5 : w>=113?4 : w>=96?3 : w>=83?2 : w>=64?1 : w>=34?0 : -1;
 const colorOf = w => CATS[catOf(w)+1].color;
 const catColor = k => CATS[k+1].color;
@@ -220,7 +273,7 @@ function applyFilters(){
 /* ---------------- masthead ---------------- */
 const titleEl = document.getElementById('title'), subEl = document.getElementById('subtitle');
 function renderMast(){
-  titleEl.innerHTML=S.mode==='storm'?`<em>${S.selected.name}</em>`:`The <em>${S.year}</em> season`;
+  titleEl.innerHTML=S.mode==='storm'?`${S.selected.name}`:`${S.year} season`;
   subEl.textContent=S.mode==='storm'?`${S.selected.basin} · ${S.selected.year}`:`${S.visible.length} hurricanes · Atlantic & Eastern Pacific`;
   document.body.classList.toggle('storm',S.mode==='storm');
 }
@@ -241,7 +294,7 @@ function renderCards(){
   document.getElementById('n').textContent = S.visible.length;
   if (!S.visible.length){ cardsEl.innerHTML = `<div class="empty">No hurricanes match.</div>`; return; }
   S.visible.forEach((s,i)=>{
-    const el=document.createElement('button'); el.type='button'; el.className='card'; el.setAttribute('aria-label',`${s.name}, ${s.year}, ${s.basin}, ${CATS[s.cat+1].name}. ${fmtShort(new Date(s.startMs))} to ${fmtShort(new Date(s.endMs))}. Peak ${s.peak} knots, minimum pressure ${s.minp??'unknown'} hectopascals, ${s.days.toFixed(1)} days. View storm details`); el.style.setProperty('--cc', s.color); el.style.animationDelay = Math.min(i*40, 500)+'ms';
+    const el=document.createElement('button'); el.type='button'; el.className='card'; el.setAttribute('aria-label',`${s.name}, ${s.year}, ${s.basin}, ${CATS[s.cat+1].name}. ${fmtShort(new Date(s.startMs))} to ${fmtShort(new Date(s.endMs))}. Peak ${s.peak} knots, minimum pressure ${s.minp??'unknown'} hectopascals, ${s.days.toFixed(1)} days. View storm details`); el.style.setProperty('--cc', `var(${catVar(s.cat)})`); el.style.animationDelay = Math.min(i*40, 500)+'ms';
     el.innerHTML = `
       <div class="card-top"><h3><span class="live-dot"></span>${s.name}</h3><span class="cat"><i></i>${CATS[s.cat+1].short}</span></div>
       <div class="card-meta">${s.basin} · ${fmtShort(new Date(s.startMs))} – ${fmtShort(new Date(s.endMs))}, ${s.year}</div>
@@ -299,7 +352,7 @@ document.querySelectorAll('#sort button').forEach(b=>b.addEventListener('click',
 }));
 
 /* legend */
-document.getElementById('legend').innerHTML = CATS.slice(1).map(c=>`<span style="--cc:${c.color}"><i></i>${c.short}</span>`).join('');
+document.getElementById('legend').innerHTML = CATS.slice(1).map(c=>`<span style="--cc:var(${c.v})"><i></i>${c.short}</span>`).join('');
 
 /* ---------------- transport ---------------- */
 const playBtn=document.getElementById('play');
@@ -389,12 +442,12 @@ function drawGlobe(){
   projection.rotate(S.rotate).scale(sc).translate([cx,cy]);
   ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,W,H);
   // The ocean is the page itself; no sphere outline, shadow or frame.
-  ctx.beginPath();path(land);ctx.fillStyle='#f0f0eb';ctx.fill();
-  ctx.strokeStyle='#d4d4ca';ctx.lineWidth=.55;ctx.stroke();
-  ctx.beginPath();path(borders);ctx.strokeStyle='#d6d6ce';ctx.lineWidth=.5;ctx.stroke();
-  ctx.beginPath();path(mapContext.states);ctx.strokeStyle='#dadad2';ctx.lineWidth=.45;ctx.stroke();
+  ctx.beginPath();path(land);ctx.fillStyle=P.land;ctx.fill();
+  ctx.strokeStyle=P.coast;ctx.lineWidth=.55;ctx.stroke();
+  ctx.beginPath();path(borders);ctx.strokeStyle=P.border;ctx.lineWidth=.5;ctx.stroke();
+  ctx.beginPath();path(mapContext.states);ctx.strokeStyle=P.state;ctx.lineWidth=.45;ctx.stroke();
   const fade=ctx.createRadialGradient(cx,cy,sc*.74,cx,cy,sc);
-  fade.addColorStop(0,'rgba(255,255,255,0)');fade.addColorStop(1,'rgba(255,255,255,.9)');
+  fade.addColorStop(0,P.veilAt(0));fade.addColorStop(1,P.veilAt(.9));
   ctx.fillStyle=fade;ctx.beginPath();ctx.arc(cx,cy,sc,0,Math.PI*2);ctx.fill();
 }
 /* Cities are a permanent basemap layer ranked by population, so the set only
@@ -436,14 +489,14 @@ function drawCities(){
     const near=nearbyNames.has(city.name);
     drawn++;
     ctx.beginPath();ctx.arc(q[0],q[1],near?3.1:2,0,Math.PI*2);
-    ctx.fillStyle=near?'#1b1b18':'#8a897b';ctx.fill();
-    if(near){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();}
+    ctx.fillStyle=near?P.cityNear:P.cityDot;ctx.fill();
+    if(near){ctx.strokeStyle=P.paper;ctx.lineWidth=1.5;ctx.stroke();}
     ctx.font=`${near?600:500} 10px "Libre Franklin",sans-serif`;
     const rect={x:q[0]+7,y:q[1]-7,w:ctx.measureText(city.name).width+5,h:14};
     if(rect.x+rect.w>W-8)continue;
     if(cityLabels.some(r=>hits(rect,r))||obstacles.some(o=>hits(rect,o)))continue;
-    ctx.lineWidth=3.2;ctx.strokeStyle='rgba(255,255,255,.9)';ctx.strokeText(city.name,rect.x,q[1]);
-    ctx.fillStyle=near?'#1b1b18':'#6b6a5c';ctx.fillText(city.name,rect.x,q[1]);
+    ctx.lineWidth=3.2;ctx.strokeStyle=P.veilAt(.9);ctx.strokeText(city.name,rect.x,q[1]);
+    ctx.fillStyle=near?P.cityNear:P.cityLabel;ctx.fillText(city.name,rect.x,q[1]);
     cityLabels.push(rect);
   }
 }
@@ -474,7 +527,7 @@ function drawStorms(now){
     }
     const lw = isFocus ? 2.8 : 2.1;
     // white casing so tracks separate from land and from each other
-    ctx.globalAlpha=alpha*0.9; ctx.strokeStyle='#ffffff'; ctx.lineWidth=lw+2.5;
+    ctx.globalAlpha=alpha*0.9; ctx.strokeStyle=P.paper; ctx.lineWidth=lw+2.5;
     ctx.beginPath(); for (const g of segs){ ctx.moveTo(g.pa[0],g.pa[1]); ctx.lineTo(g.pb[0],g.pb[1]); } ctx.stroke();
     for (const g of segs){ ctx.beginPath(); ctx.moveTo(g.pa[0],g.pa[1]); ctx.lineTo(g.pb[0],g.pb[1]);
       ctx.strokeStyle=colorOf(g.w); ctx.globalAlpha=alpha*g.fade; ctx.lineWidth=g.w<34?lw*0.6:lw; ctx.stroke(); }
@@ -483,14 +536,14 @@ function drawStorms(now){
   ctx.globalAlpha=1;
   for (const h of heads){
     const col=colorOf(h.p.w), r=4+Math.max(0,h.p.w-30)/34;
-    ctx.globalAlpha=h.alpha; ctx.fillStyle=col; ctx.strokeStyle='#ffffff'; ctx.lineWidth=2;
+    ctx.globalAlpha=h.alpha; ctx.fillStyle=col; ctx.strokeStyle=P.paper; ctx.lineWidth=2;
     ctx.beginPath(); ctx.arc(h.q[0],h.q[1],r,0,Math.PI*2); ctx.fill(); ctx.stroke();
     if (S.mode==='season' || h.isFocus){
       ctx.globalAlpha=h.alpha; ctx.font='700 11.5px "Libre Franklin", sans-serif'; ctx.textBaseline='middle';
       const label=h.s.name, wk=Math.round(h.p.w)+' kt';
-      ctx.lineWidth=3.4; ctx.strokeStyle='rgba(255,255,255,.92)'; ctx.strokeText(label,h.q[0]+r+8,h.q[1]);
-      ctx.fillStyle='#171716'; ctx.fillText(label,h.q[0]+r+8,h.q[1]);
-      if (h.isFocus){ ctx.font='500 10px "Libre Franklin", sans-serif'; ctx.strokeText(wk,h.q[0]+r+8,h.q[1]+14); ctx.fillStyle='#6b6a5c'; ctx.fillText(wk,h.q[0]+r+8,h.q[1]+14); }
+      ctx.lineWidth=3.4; ctx.strokeStyle=P.veilAt(.92); ctx.strokeText(label,h.q[0]+r+8,h.q[1]);
+      ctx.fillStyle=P.ink; ctx.fillText(label,h.q[0]+r+8,h.q[1]);
+      if (h.isFocus){ ctx.font='500 10px "Libre Franklin", sans-serif'; ctx.strokeText(wk,h.q[0]+r+8,h.q[1]+14); ctx.fillStyle=P.inkQuiet; ctx.fillText(wk,h.q[0]+r+8,h.q[1]+14); }
     }
   }
   ctx.globalAlpha=1;
@@ -539,16 +592,21 @@ function refresh(){renderRail();updateCardStates();paint();}
 
 /* Hero: one raster per actual size, no drawing loop. */
 const hero=document.getElementById('hero'),heroCanvas=document.getElementById('hero-field');
-const heroGeometry=storms.map(s=>s.track.slice(1).map((b,i)=>({type:'LineString',coordinates:[[s.track[i].lon,s.track[i].lat],[b.lon,b.lat]],color:colorOf(s.track[i].w)})));
+const heroGeometry=storms.map(s=>s.track.slice(1).map((b,i)=>({type:'LineString',coordinates:[[s.track[i].lon,s.track[i].lat],[b.lon,b.lat]],cat:catOf(s.track[i].w)})));
 let heroKey='',heroDraws=0;
 function drawHero(){
   const w=hero.clientWidth,h=hero.clientHeight,dpr=Math.min(1.5,devicePixelRatio||1,Math.sqrt(1.5e6/(w*h)));
-  const key=w+','+h+','+dpr;if(heroKey===key)return;heroKey=key;heroDraws++;
+  const key=w+','+h+','+dpr+','+theme;if(heroKey===key)return;heroKey=key;heroDraws++;
   heroCanvas.width=Math.floor(w*dpr);heroCanvas.height=Math.floor(h*dpr);
   const c=heroCanvas.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);
   const proj=d3.geoEquirectangular().center([-100,22]).scale(Math.max(w/3.6,h/1.6)).translate([w*.61,h*.58]);
-  const hp=d3.geoPath(proj,c);c.lineWidth=.75;c.globalAlpha=.65;
-  for(const track of heroGeometry)for(const segment of track){c.beginPath();hp(segment);c.strokeStyle=segment.color;c.stroke();}
+  const hp=d3.geoPath(proj,c);c.globalAlpha=P.heroWeight;c.lineCap='round';c.lineJoin='round';
+  for(const track of heroGeometry)for(const segment of track){
+    c.beginPath();hp(segment);
+    c.strokeStyle=catColor(segment.cat);
+    c.lineWidth=.6+Math.max(0,segment.cat+1)*.26;   // TD hairline, Cat 5 nearly 2px
+    c.stroke();
+  }
 }
 const ledger=[['Storms',storms.length],['Seasons',YEARS.length],['Major hurricanes',storms.filter(s=>s.cat>=3).length],['Category 5',storms.filter(s=>s.cat===5).length],['Landfall events',storms.reduce((n,s)=>n+s.landfalls.length,0)]];
 document.getElementById('ledger').innerHTML=ledger.map(([label,n])=>`<div class="ledger-item"><b>${n}</b><span>${label}</span></div>`).join('');
@@ -576,6 +634,54 @@ const observer=new IntersectionObserver(entries=>{
 },{threshold:[0,.05,.35]});observer.observe(atlasFrame);
 document.addEventListener('visibilitychange',syncLoop);
 motionQuery.addEventListener('change',e=>{reducedMotion=e.matches;if(reducedMotion){S.playing=false;if(S.fly){S.fly.step(1);S.fly=null;}}refresh();});
+
+/* ---------------- theme, driven by the reader's clock ---------------- */
+const DAY_FROM=7, NIGHT_FROM=19, THEME_KEY='hurricanes-theme';
+const editionBtn=document.getElementById('edition'),editionName=editionBtn.querySelector('.edition-name');
+const eraAt=d=>{const h=d.getHours();return (h>=NIGHT_FROM||h<DAY_FROM)?'night':'day';};
+const autoTheme=()=>eraAt(new Date())==='night'?'dark':'light';
+function storedChoice(){
+  // An override is honoured only within the era it was made in.
+  try{const v=JSON.parse(localStorage.getItem(THEME_KEY)||'null');
+    if(v&&v.era===eraAt(new Date())&&(v.theme==='dark'||v.theme==='light'))return v.theme;
+  }catch(e){}
+  return null;
+}
+function applyTheme(next,{persist=true,announceIt=true}={}){
+  theme=next;
+  document.documentElement.dataset.theme=theme;
+  if(persist){try{localStorage.setItem(THEME_KEY,JSON.stringify({theme,era:eraAt(new Date())}));}catch(e){}}
+  const other=theme==='dark'?'Light':'Dark';   // the button names what you would switch TO
+  editionName.textContent=other;
+  editionBtn.setAttribute('aria-pressed',theme==='dark');
+  editionBtn.setAttribute('aria-label',`Switch to the ${other.toLowerCase()} theme`);
+  readPalette();            // canvas colours are sampled, not inherited
+  obstaclesDirty=true;
+  drawHero();               // keyed on theme, so this redraws the poster
+  refresh();
+  if(announceIt)announce(`${theme==='dark'?'Dark':'Light'} theme.`);
+}
+editionBtn.addEventListener('click',()=>applyTheme(theme==='dark'?'light':'dark'));
+
+/* Re-check at every boundary, and whenever the tab wakes up, since a sleeping
+   timer can miss one entirely. */
+let themeTimer=0;
+function syncThemeToClock(){
+  const want=storedChoice()??autoTheme();
+  if(want!==theme)applyTheme(want,{persist:false,announceIt:false});
+  scheduleThemeCheck();
+}
+function scheduleThemeCheck(){
+  clearTimeout(themeTimer);
+  const now=new Date(), next=new Date(now);
+  next.setMinutes(0,1,0);
+  const h=now.getHours();
+  next.setHours(h<DAY_FROM?DAY_FROM:h<NIGHT_FROM?NIGHT_FROM:24);
+  themeTimer=setTimeout(syncThemeToClock,Math.min(Math.max(next-now,1000),21600000));
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncThemeToClock();});
+applyTheme(theme,{persist:false,announceIt:false});
+scheduleThemeCheck();
 let resizeRaf=0;
 function queueResize(){if(resizeRaf)return;resizeRaf=requestAnimationFrame(()=>{resizeRaf=0;const changed=resize();drawHero();if(changed||!raf)refresh();});}
 const resizeObserver=new ResizeObserver(queueResize);resizeObserver.observe(stage);resizeObserver.observe(hero);
