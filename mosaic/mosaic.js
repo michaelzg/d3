@@ -26,23 +26,29 @@ function simulate(){
   }
  });
 }
-// Keep two strong vertical anchors; recursively partition the middle by population.
+// Art-directed slots on a 1000 × 500 stage. Empty space is part of the layout.
+// Each count keeps the same stage ratio; population gently scales within safe slots.
+const COMPOSITIONS = {
+ 4: [[120,70,180,350],[325,60,350,170],[330,255,350,175],[705,80,175,350]],
+ 5: [[30,70,175,335],[230,45,250,170],[505,60,250,170],[230,240,525,185],[780,80,180,335]],
+ 6: [[40,60,180,320],[245,35,250,165],[265,220,195,260],[515,55,210,180],[495,255,235,195],[760,75,185,330]],
+ 7: [[20,100,160,290],[205,45,230,165],[220,235,210,230],[460,20,270,175],[455,220,265,165],[750,65,225,240],[745,330,230,145]],
+ 8: [[15,95,170,300],[210,25,175,180],[205,230,180,245],[410,60,180,225],[410,310,180,150],[615,30,180,170],[610,225,190,220],[825,80,160,330]]
+};
+const MOBILE_COMPOSITIONS = {
+ 4: [[15,35,440,650],[490,15,495,390],[490,435,470,390],[35,715,420,510]],
+ 5: [[15,35,440,650],[490,15,495,330],[490,375,470,365],[35,715,420,510],[490,770,490,450]],
+ 6: [[15,25,440,490],[490,15,495,340],[35,545,420,350],[490,385,470,490],[15,925,440,300],[490,905,490,315]],
+ 7: [[15,25,440,430],[490,15,495,290],[35,485,420,340],[490,335,470,425],[15,855,440,365],[490,790,490,210],[510,1030,460,195]],
+ 8: [[15,25,440,320],[490,15,495,260],[35,375,420,245],[490,305,470,365],[15,650,440,320],[490,700,490,245],[35,1000,420,225],[510,975,460,250]]
+};
 function layout(regions,width,height){
- const gap=10;
- if(width<900){
-  const columns=width<440?1:2, cell=(width-gap*(columns-1))/columns;
-  root.style('height',`${Math.ceil(regions.length/columns)*300-gap}px`);
-  return regions.map((r,i)=>({r,x:i%columns*(cell+gap),y:Math.floor(i/columns)*300,w:cell,h:290}));
- }
- root.style('height',null);
- const ranked=[...regions].sort((a,b)=>b.value-a.value);
- const anchors=[ranked[0],ranked[1]], interior=regions.filter(r=>!anchors.includes(r));
- const total=d3.sum(regions,r=>r.value), available=width-2*gap;
- const left=available*anchors[0].value/total,right=available*anchors[1].value/total;
- const middleWidth=width-left-right-2*gap;
- const tree=d3.hierarchy({children:interior.map(r=>({r,value:r.value}))}).sum(d=>d.value||0);
- d3.treemap().tile(d3.treemapBinary).size([middleWidth,height]).paddingInner(gap)(tree);
- return [{r:anchors[0],x:0,y:0,w:left,h:height},...tree.leaves().map(n=>({r:n.data.r,x:left+gap+n.x0,y:n.y0,w:n.x1-n.x0,h:n.y1-n.y0})),{r:anchors[1],x:width-right,y:0,w:right,h:height}];
+ const mobile=width<600, slots=(mobile?MOBILE_COMPOSITIONS:COMPOSITIONS)[regions.length];
+ const [min,max]=d3.extent(regions,r=>r.value);
+ return regions.map((r,i)=>{
+  const [x,y,w,h]=slots[i], scale=.94+.06*(r.value-min)/(max-min||1);
+  return {r,x:(x+w*(1-scale)/2)*width/1000,y:(y+h*(1-scale)/2)*height/(mobile?1250:500),w:w*scale*width/1000,h:h*scale*height/(mobile?1250:500)};
+ });
 }
 function drawMap(node,r){
  const w=node.clientWidth,h=node.clientHeight;
@@ -51,7 +57,9 @@ function drawMap(node,r){
  // Fit actual geographic bounds into the space between the headline and caption.
  const projection=d3.geoMercator().rotate([-r.center[0],0]).center([0,r.center[1]]);
  const corners={type:'MultiPoint',coordinates:[[r.center[0]-r.span[0]/2,r.center[1]-r.span[1]/2],[r.center[0]+r.span[0]/2,r.center[1]+r.span[1]/2]]};
- projection.fitExtent([[8,70],[w-8,h-60]],corners);
+ const compact=w<180||h<220;
+ projection.fitExtent([[6,compact?36:60],[w-6,Math.max(compact?45:70,h-(compact?30:48))]],corners);
+ d3.select(node).classed('compact',compact);
  const path=d3.geoPath(projection);
  svg.select('.grid').attr('d',path(d3.geoGraticule().step([2,2])()));
  svg.select('.land').attr('d',path(geography));
@@ -59,13 +67,13 @@ function drawMap(node,r){
  svg.select('.points').selectAll('circle').data(r.points).join('circle').attr('class','point').attr('r',1.15).attr('cx',d=>projection(d)[0]).attr('cy',d=>projection(d)[1]);
  const [x,y]=projection(r.center);
  svg.select('.center').attr('cx',x).attr('cy',y);
- svg.select('.city-label').attr('x',Math.max(12,Math.min(w-70,x+9))).attr('y',y-10).text(r.name);
- svg.select('.water-label').attr('x',w*(r.waterAt?.[0]||.5)).attr('y',Math.max(96,h*(r.waterAt?.[1]||.5))).text(w>210?r.water||'':'');
+ svg.select('.city-label').attr('x',Math.max(12,Math.min(w-70,x+9))).attr('y',y-10).text(w>190&&h>220?r.name:'');
+ svg.select('.water-label').attr('x',w*(r.waterAt?.[0]||.5)).attr('y',Math.max(96,h*(r.waterAt?.[1]||.5))).text(w>270&&h>260?r.water||'':'');
 }
 const panelObserver=new ResizeObserver(entries=>entries.forEach(e=>drawMap(e.target,e.target.__data__.r)));
 function render(){
  if(!geography)return;
- const width=root.node().clientWidth, height=innerWidth>=1600?610:innerWidth<=1000?570:540;
+ const width=root.node().clientWidth, height=root.node().clientHeight;
  const boxes=layout(REGIONS.slice(0,count),width,height);
  const panels=root.selectAll('article').data(boxes,d=>d.r.id);
  panels.exit().each(function(){panelObserver.unobserve(this)}).remove();
