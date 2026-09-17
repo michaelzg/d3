@@ -9,6 +9,9 @@ const REGIONS = [
  {id:'mexico',name:'Mexico City',country:'Mexico',center:[-99.13,19.43],span:[14,10],population:21.8},
  {id:'lagos',name:'Lagos',country:'Nigeria',center:[3.38,6.52],span:[13,11],population:16.5,water:'GULF OF GUINEA',waterAt:[.55,.78]}
 ];
+// Choose once per page load; featured regions remain visible for every count.
+const featured = new Set(d3.shuffle([...REGIONS]).slice(0,1+Math.floor(Math.random()*3)).map(r=>r.id));
+const displayRegions = [...REGIONS.filter(r=>featured.has(r.id)), ...REGIONS.filter(r=>!featured.has(r.id))];
 let count=6, generation=0, geography, borders;
 const root=d3.select('#mosaic');
 function simulate(){
@@ -45,8 +48,13 @@ const MOBILE_COMPOSITIONS = {
 function layout(regions,width,height){
  const mobile=width<600, slots=(mobile?MOBILE_COMPOSITIONS:COMPOSITIONS)[regions.length];
  const [min,max]=d3.extent(regions,r=>r.value);
- return regions.map((r,i)=>{
-  const [x,y,w,h]=slots[i], scale=.94+.06*(r.value-min)/(max-min||1);
+ const available=slots.map((slot,index)=>({slot,index})).sort((a,b)=>b.slot[2]*b.slot[3]-a.slot[2]*a.slot[3]);
+ const assigned=new Map();
+ regions.filter(r=>featured.has(r.id)).forEach(r=>assigned.set(r.id,available.shift().slot));
+ available.sort((a,b)=>a.index-b.index);
+ regions.filter(r=>!featured.has(r.id)).forEach(r=>assigned.set(r.id,available.shift().slot));
+ return regions.map(r=>{
+  const [x,y,w,h]=assigned.get(r.id), scale=featured.has(r.id)?1:.86+.06*(r.value-min)/(max-min||1);
   return {r,x:(x+w*(1-scale)/2)*width/1000,y:(y+h*(1-scale)/2)*height/(mobile?1250:500),w:w*scale*width/1000,h:h*scale*height/(mobile?1250:500)};
  });
 }
@@ -67,6 +75,7 @@ function drawMap(node,r){
  svg.select('.points').selectAll('circle').data(r.points).join('circle').attr('class','point').attr('r',1.15).attr('cx',d=>projection(d)[0]).attr('cy',d=>projection(d)[1]);
  const [x,y]=projection(r.center);
  svg.select('.center').attr('cx',x).attr('cy',y);
+ d3.select(node).select('.focus-glow').style('left',`${x}px`).style('top',`${y}px`);
  svg.select('.city-label').attr('x',Math.max(12,Math.min(w-70,x+9))).attr('y',y-10).text(w>190&&h>220?r.name:'');
  svg.select('.water-label').attr('x',w*(r.waterAt?.[0]||.5)).attr('y',Math.max(96,h*(r.waterAt?.[1]||.5))).text(w>270&&h>260?r.water||'':'');
 }
@@ -74,21 +83,21 @@ const panelObserver=new ResizeObserver(entries=>entries.forEach(e=>drawMap(e.tar
 function render(){
  if(!geography)return;
  const width=root.node().clientWidth, height=root.node().clientHeight;
- const boxes=layout(REGIONS.slice(0,count),width,height);
+ const boxes=layout(displayRegions.slice(0,count),width,height);
  const panels=root.selectAll('article').data(boxes,d=>d.r.id);
  panels.exit().each(function(){panelObserver.unobserve(this)}).remove();
  const enter=panels.enter().append('article').attr('class','panel');
- enter.html('<svg role="img"><title></title><path class="grid"/><path class="land"/><path class="borders" fill="none" stroke="#c4cebd" stroke-width=".5"/><text class="water-label" text-anchor="middle"/><g class="points"/><circle class="center" r="2.6" fill="#583e2b" stroke="#fff" stroke-width="1"/><text class="city-label"/></svg><div class="panel-title"><p class="region-meta"></p><h2></h2></div><p class="population"><strong></strong>simulated population</p><span class="panel-number" aria-hidden="true"></span>');
+ enter.html('<svg role="img"><title></title><path class="grid"/><path class="land"/><path class="borders" fill="none" stroke="#c4cebd" stroke-width=".5"/><text class="water-label" text-anchor="middle"/><g class="points"/><circle class="center" r="2.6" fill="#583e2b" stroke="#fff" stroke-width="1"/><text class="city-label"/></svg><div class="focus-glow" aria-hidden="true"></div><div class="panel-title"><p class="region-meta"></p><h2></h2></div><p class="population"><strong></strong>simulated population</p><span class="panel-number" aria-hidden="true"></span>');
  enter.each(function(){panelObserver.observe(this)});
- const all=enter.merge(panels);
+ const all=enter.merge(panels).classed('featured',d=>featured.has(d.r.id));
  all.style('left',d=>`${d.x}px`).style('top',d=>`${d.y}px`).style('width',d=>`${d.w}px`).style('height',d=>`${d.h}px`);
  all.select('h2').text(d=>d.r.name);
  all.select('.region-meta').text(d=>d.r.country);
  all.select('.population strong').text(d=>`${d.r.value.toFixed(1)}m`);
  all.select('.panel-number').text(d=>String(REGIONS.indexOf(d.r)+1).padStart(2,'0'));
- all.select('svg title').text(d=>`${d.r.name}, ${d.r.country}. ${d.r.value} million simulated people clustered around the city.`);
+ all.select('svg title').text(d=>`${featured.has(d.r.id)?'Highlighted region. ':''}${d.r.name}, ${d.r.country}. ${d.r.value} million simulated people clustered around the city.`);
  all.each(function(d){drawMap(this,d.r)});
- d3.select('#summary').text(`${count} regions · ${d3.sum(REGIONS.slice(0,count),r=>r.value).toFixed(1)} million simulated people`);
+ d3.select('#summary').text(`${count} regions · ${d3.sum(displayRegions.slice(0,count),r=>r.value).toFixed(1)} million simulated people`);
  d3.selectAll('[data-count]').attr('aria-pressed',function(){return +this.dataset.count===count?'true':'false'});
 }
 d3.selectAll('[data-count]').on('click',function(){count=+this.dataset.count;render()});

@@ -6,3 +6,6 @@ Target: /mosaic/ served from the d3 static site.
 4. Settled panels never overlap or leave the banner frame. All map projections refit, city names and population values stay readable, and no horizontal page overflow occurs.
 5. Resimulate changes population and clusters. Shared region values persist when count changes. Controls work by keyboard, with selected state and reduced-motion support.
 6. Existing hurricane page and local assets remain intact. Publish the corrected page to the existing GitHub Pages site under the prior authorization.
+
+7. Each page load randomly selects 1–3 unique regions. These remain visible and highlighted for all counts 4–8 and after resimulation. Reload can choose a new set.
+8. Featured regions occupy the largest panel areas on desktop and phone; subtle gold glow pulses around their actual projected city centers. Nonfeatured regions have no glow. Reduced motion retains a still gold highlight.

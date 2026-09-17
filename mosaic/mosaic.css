@@ -12,3 +12,17 @@
 .panel.compact .population strong{font-size:20px;margin:0}
 .panel.compact .panel-number{font-size:10px;bottom:12px}
 @media(max-width:639px){.mosaic{aspect-ratio:4 / 5}.panel{border-radius:14px}.panel h2{font-size:20px}.panel.compact h2{font-size:16px}.panel.compact .region-meta{display:none}.panel.compact .population strong{font-size:18px}.panel.compact .panel-title{top:9px;left:10px}.panel.compact .population{left:10px;bottom:7px}.panel-number{display:none}}
+
+/* A quiet gold spotlight, centered on the projected city rather than the card. */
+.panel.featured{border-color:#b99a52;box-shadow:0 0 0 1px #c6a55718,0 5px 24px #a57c2012}
+.panel.featured .point{fill:#a87924;opacity:.72}
+.panel.featured .center{fill:#8e651a}
+.panel.featured .region-meta{color:#8b6b30}
+.focus-glow{display:none;position:absolute;width:100px;height:100px;transform:translate(-50%,-50%);pointer-events:none}
+.featured .focus-glow{display:block}
+.focus-glow::before{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,#efc76b55 0%,#dfb55735 30%,#dfb55712 55%,transparent 72%);opacity:.65;animation:gold-breathe 4.8s ease-in-out infinite}
+.focus-glow::after{content:"";position:absolute;inset:35px;border:1px solid #b78a3280;border-radius:50%;opacity:.5;animation:gold-ring 4.8s ease-in-out infinite}
+.panel.featured .panel-title,.panel.featured .population{z-index:1}
+@keyframes gold-breathe{0%,100%{opacity:.4;transform:scale(.86)}50%{opacity:.9;transform:scale(1.16)}}
+@keyframes gold-ring{0%,100%{opacity:.25;transform:scale(.9)}50%{opacity:.6;transform:scale(1.2)}}
+@media(prefers-reduced-motion:reduce){.focus-glow::before,.focus-glow::after{animation:none;transform:none}}
