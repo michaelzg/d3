@@ -4,191 +4,86 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Tempest Atlas</title>
+<link rel="icon" href="data:,">
 <meta name="description" content="An interactive globe of every named hurricane since 2020, explorable across time and space.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --paper:#ffffff;
-    --paper-2:#f7f7f5;
-    --ink:#121212;
-    --ink-70:#4d4d4d;
-    --ink-50:#727272;
-    --ink-35:#9a9a9a;
-    --rule:#e2e2e2;
-    --rule-2:#cfcfcf;
-    --td:#b9b9b9;
-    --ts:#82b8e0;
-    --c1:#efcd3a;
-    --c2:#f29e38;
-    --c3:#e8672a;
-    --c4:#cf2f24;
-    --c5:#7d1010;
-    --panel-w:380px;
-    --tl-h:112px;
-    --sans:'Libre Franklin',Helvetica,Arial,sans-serif;
-    --serif:'Newsreader',Georgia,'Times New Roman',serif;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:13px;overflow:hidden;-webkit-font-smoothing:antialiased}
-  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
-
-  #stage{position:fixed;inset:0;overflow:hidden;background:var(--paper)}
-  #globe{position:absolute;inset:0;display:block;cursor:grab;touch-action:none}
-  #globe.grabbing{cursor:grabbing}
-  #globe.pointing{cursor:pointer}
-
-  /* ---------- masthead ---------- */
-  #mast{position:absolute;left:40px;top:34px;right:calc(var(--panel-w) + 24px);pointer-events:none;z-index:3}
-  #mast > *{pointer-events:auto}
-  .eyebrow{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-50);display:flex;align-items:center;gap:10px}
-  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--ink)}
-  #title{font-family:var(--serif);font-weight:400;font-size:clamp(40px,4.6vw,64px);line-height:1;letter-spacing:-.015em;margin-top:14px;max-width:620px;color:var(--ink)}
-  #title em{font-style:italic;font-weight:400}
-  #subtitle{margin-top:12px;font-size:13px;color:var(--ink-70);display:flex;flex-wrap:wrap;gap:6px 0;align-items:center;line-height:1.5}
-  #subtitle .sep{display:inline-block;width:3px;height:3px;border-radius:50%;background:var(--ink-35);margin:0 10px}
-  #back{display:none;margin-bottom:14px;align-items:center;gap:8px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);padding:7px 12px 7px 9px;border:1px solid var(--rule-2);border-radius:999px;background:var(--paper);transition:background .2s,border-color .2s}
-  #back:hover{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-  #back svg{width:11px;height:11px}
-  body.storm #back{display:inline-flex}
-  .badge{display:inline-flex;align-items:center;gap:7px;padding:3px 9px 3px 7px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);border:1px solid var(--rule-2);background:var(--paper)}
-  .badge i{width:9px;height:9px;border-radius:50%;background:var(--cc,var(--ink))}
-
-  .reveal{opacity:0;transform:translateY(8px);animation:rise .8s cubic-bezier(.2,.7,.2,1) forwards}
-  @keyframes rise{to{opacity:1;transform:none}}
-
-  /* ---------- side panel ---------- */
-  #panel{position:absolute;top:0;right:0;bottom:0;width:var(--panel-w);z-index:4;display:flex;flex-direction:column;background:var(--paper);border-left:1px solid var(--rule)}
-  #filters{padding:28px 24px 18px;border-bottom:1px solid var(--rule)}
-  .frow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  .frow + .frow{margin-top:10px}
-  .flabel{font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-50);width:52px;flex:none}
-  .chip{font-size:12px;font-weight:500;padding:5px 10px;border:1px solid var(--rule-2);border-radius:999px;color:var(--ink-70);transition:all .18s;background:var(--paper)}
-  .chip:hover{border-color:var(--ink);color:var(--ink)}
-  .chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-  #count{padding:16px 24px 10px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-50);display:flex;justify-content:space-between;align-items:center;gap:10px}
-  #count b{color:var(--ink);font-weight:700}
-  #sort{display:flex;gap:10px;flex:none}
-  #sort button{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-35);padding:3px 0;border-bottom:1.5px solid transparent;white-space:nowrap}
-  #sort button.on{color:var(--ink);border-bottom-color:var(--ink)}
-  #cards{flex:1;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#d0d0d0 transparent;padding-bottom:40px}
-  #cards::-webkit-scrollbar{width:6px}
-  #cards::-webkit-scrollbar-thumb{background:#d0d0d0;border-radius:3px}
-  .card{position:relative;padding:18px 24px 18px 28px;border-bottom:1px solid var(--rule);cursor:pointer;transition:background .2s;animation:rise .6s cubic-bezier(.2,.7,.2,1) both}
-  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--cc);opacity:0;transform:scaleY(.3);transition:opacity .25s,transform .35s cubic-bezier(.2,.7,.2,1)}
-  .card:hover{background:var(--paper-2)}
-  .card:hover::before{opacity:.6;transform:scaleY(1)}
-  .card.sel{background:var(--paper-2)}
-  .card.sel::before{opacity:1;transform:scaleY(1)}
-  .card-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-  .card h3{font-family:var(--serif);font-weight:500;font-size:26px;line-height:1;letter-spacing:-.01em;color:var(--ink);display:flex;align-items:center;gap:9px}
-  .live-dot{display:none;width:7px;height:7px;border-radius:50%;background:var(--cc);animation:pulse 1.3s ease-in-out infinite}
-  .card.live .live-dot{display:block}
-  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
-  .cat{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);white-space:nowrap;display:flex;align-items:center;gap:6px}
-  .cat i{width:8px;height:8px;border-radius:50%;background:var(--cc)}
-  .card-meta{margin-top:7px;font-size:11.5px;color:var(--ink-50)}
-  .card-bottom{display:flex;align-items:flex-end;justify-content:space-between;margin-top:14px;gap:12px}
-  .stats{display:flex;gap:16px}
-  .stat{display:flex;flex-direction:column;gap:2px}
-  .stat b{font-weight:600;font-size:15px;color:var(--ink);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
-  .stat b small{font-size:9.5px;font-weight:500;color:var(--ink-35);margin-left:2px;letter-spacing:.06em}
-  .stat span{font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-35)}
-  .spark{flex:none;width:104px;height:30px;overflow:visible}
-  .spark path.a{fill:var(--cc);opacity:.18}
-  .spark path.l{fill:none;stroke:var(--cc);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
-  .spark line{stroke:var(--rule-2);stroke-width:1}
-  .empty{padding:60px 24px;text-align:center;color:var(--ink-50);font-family:var(--serif);font-style:italic;font-size:22px}
-
-  /* ---------- timeline ---------- */
-  #timeline{position:absolute;left:0;right:var(--panel-w);bottom:0;height:var(--tl-h);z-index:3;display:flex;align-items:stretch;background:var(--paper);border-top:1px solid var(--rule);padding:0 28px 0 40px}
-  #transport{display:flex;align-items:center;gap:16px;padding-right:20px;border-right:1px solid var(--rule);margin:22px 0 20px;flex:none}
-  #play{width:44px;height:44px;border-radius:50%;background:var(--ink);display:grid;place-items:center;transition:transform .15s;flex:none}
-  #play:hover{transform:scale(1.06)}
-  #play svg{width:14px;height:14px;fill:var(--paper)}
-  #play .ic-pause,#play .ic-replay{display:none}
-  body.playing #play .ic-play{display:none}
-  body.playing #play .ic-pause{display:block}
-  body.ended:not(.playing) #play .ic-play{display:none}
-  body.ended:not(.playing) #play .ic-replay{display:block}
-  #clock{display:flex;flex-direction:column;gap:4px;min-width:132px}
-  #clock .d{font-size:14px;font-weight:700;letter-spacing:.02em;color:var(--ink);font-variant-numeric:tabular-nums}
-  #clock .h{font-size:11px;color:var(--ink-50);font-variant-numeric:tabular-nums;white-space:nowrap}
-  #speeds{display:flex;flex-direction:column;gap:1px}
-  #speeds button{font-size:10px;font-weight:600;color:var(--ink-35);padding:1px 6px;text-align:left;border-radius:3px;font-variant-numeric:tabular-nums}
-  #speeds button.on{color:var(--paper);background:var(--ink)}
-  #track{flex:1;position:relative;margin:16px 0 0 22px;min-width:120px}
-  #track svg{width:100%;height:100%;overflow:visible;cursor:ew-resize;display:block}
-  #legend{position:absolute;left:40px;bottom:calc(var(--tl-h) + 14px);display:flex;gap:14px;z-index:3;pointer-events:none;flex-wrap:wrap;max-width:calc(100% - var(--panel-w) - 80px)}
-  #legend span{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-50)}
-  #legend i{width:16px;height:3px;background:var(--cc);display:block;border-radius:2px}
-  #hint{position:absolute;right:calc(var(--panel-w) + 28px);bottom:calc(var(--tl-h) + 14px);font-size:10.5px;letter-spacing:.06em;color:var(--ink-35);pointer-events:none;z-index:2;white-space:nowrap}
-
-  /* ---------- tooltip ---------- */
-  #tip{position:absolute;z-index:5;pointer-events:none;opacity:0;transition:opacity .15s;transform:translate(14px,-50%);background:var(--paper);border:1px solid var(--rule-2);box-shadow:0 6px 24px rgba(0,0,0,.08);padding:10px 12px;border-radius:4px;min-width:150px}
-  #tip.on{opacity:1}
-  #tip .n{font-family:var(--serif);font-size:20px;font-weight:500;line-height:1;color:var(--ink)}
-  #tip .m{margin-top:6px;font-size:11px;color:var(--ink-50)}
-  #tip .m b{color:var(--ink);font-weight:700}
-
-  #loading{position:absolute;inset:0;z-index:9;display:grid;place-items:center;background:var(--paper);transition:opacity .6s;font-family:var(--serif);font-style:italic;font-size:26px;color:var(--ink-50)}
-  #loading.off{opacity:0;pointer-events:none}
-
-  @media (max-width:1100px){
-    :root{--panel-w:320px}
-    #hint{display:none}
-    #mast{left:28px;top:26px}
-    #title{font-size:40px}
-    #legend{left:28px}
-    #timeline{padding-left:28px}
-    #clock{min-width:112px}
-    #transport{gap:12px}
-  }
+:root{--paper:#fff;--paper-2:#f7f7f5;--ink:#171716;--ink-70:#555550;--ink-50:#777770;--ink-35:#99998f;--rule:#e5e5df;--rule-2:#d4d4cc;--measure:1240px;--sans:'Libre Franklin',Helvetica,Arial,sans-serif;--serif:'Newsreader',Georgia,serif}
+*{box-sizing:border-box;margin:0;padding:0}[hidden]{display:none!important}
+html,body{background:var(--paper);color:var(--ink);font:13px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}a{color:inherit;text-underline-offset:4px}
+button:focus-visible,a:focus-visible,input:focus-visible,#atlas-frame:focus-visible{outline:1px solid var(--ink);outline-offset:5px}
+.measure{width:min(var(--measure),calc(100% - 80px));margin-inline:auto}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.eyebrow,h2{font-size:10px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-50)}
+#hero{position:relative;min-height:min(760px,92svh);display:flex;align-items:center;isolation:isolate;overflow:hidden;border-bottom:1px solid var(--rule)}
+#hero-field{position:absolute;inset:0;width:100%;height:100%;z-index:-1;opacity:.38;animation:field-in 2.5s ease both}@keyframes field-in{from{opacity:0}to{opacity:.38}}
+.hero-copy{padding-block:90px}#hero h1{font:400 clamp(56px,9vw,150px)/.92 var(--serif);letter-spacing:-.045em;margin:40px 0 26px;max-width:900px}#hero h1 em{font-weight:400}
+.lede{font:400 clamp(18px,2vw,24px)/1.5 var(--serif);max-width:440px;background:#ffffffb8}.hero-links{display:flex;gap:28px;margin-top:38px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+#ledger{display:grid;grid-template-columns:repeat(5,1fr);padding-block:26px;border-bottom:1px solid var(--rule)}.ledger-item{border-left:1px solid var(--rule);padding:0 24px}.ledger-item:first-child{border:0;padding-left:0}.ledger-item b{display:block;font:400 clamp(32px,4vw,54px)/1 var(--serif);font-variant-numeric:tabular-nums}.ledger-item span{display:block;font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin-top:9px;color:var(--ink-50)}
+#atlas{padding-top:84px;scroll-margin-top:24px}#atlas>.section-head{display:flex;justify-content:space-between;align-items:center;gap:24px}.section-head h2{color:var(--ink)}
+#years{display:flex;gap:24px;align-items:center}.year{font-size:14px;min-height:44px;color:var(--ink-35);border-bottom:1px solid transparent;transition:color .2s}.year:hover{color:var(--ink)}.year.on{color:var(--ink);border-color:var(--ink)}
+#atlas-frame{position:relative;min-width:0;isolation:isolate;scroll-margin:24px;background:var(--paper)}
+#map-cell{position:relative;width:100%;height:clamp(620px,80vh,880px);min-width:0;overflow:hidden}
+#globe{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:pan-y pinch-zoom}#globe.grabbing{cursor:grabbing}#globe.pointing{cursor:pointer}
+#mast{position:absolute;left:0;top:44px;pointer-events:none;max-width:280px}#title{font:400 clamp(30px,3.3vw,44px)/1.08 var(--serif);letter-spacing:-.025em}#title em{font-weight:400}#subtitle{font-size:11px;line-height:1.9;color:var(--ink-50);margin-top:14px}
+#readout{position:absolute;top:38%;right:0;width:214px;font-size:11px;color:var(--ink-50);pointer-events:none}
+#readout h3{font-size:9px;letter-spacing:.14em;font-weight:500;margin-bottom:22px}#active-rows{display:grid;gap:22px}.active-row strong{font:400 29px/1.1 var(--serif);color:var(--ink);display:block;margin-bottom:6px}.active-row small{display:block;font-size:10px;line-height:1.8}.active-row .impact{margin-top:4px;color:var(--ink-50)}
+#quiet{font:italic 22px var(--serif);color:var(--ink-35)}#vitals .storm-name{font:400 32px var(--serif);color:var(--ink);margin-bottom:12px}#vitals p{margin:6px 0;line-height:1.8}#vitals details{pointer-events:auto;margin-top:12px}#vitals summary{cursor:pointer;font-size:10px}#vitals ul{list-style:none;font-size:10px;line-height:1.8;margin-top:8px}
+#nearby-note{font-size:10px;line-height:1.8;margin-top:24px;max-width:210px;color:var(--ink-50)}#nearby-note:empty{display:none}
+#timeline{display:flex;align-items:center;gap:20px;width:min(720px,100%);margin:4px auto 0;color:var(--ink-50)}#play{width:36px;height:36px;display:grid;place-items:center;flex:none}#play svg{width:11px;height:11px;fill:var(--ink-50)}#play .ic-pause,#play .ic-replay{display:none}body.playing #play .ic-play{display:none}body.playing #play .ic-pause{display:block}
+#track{flex:1;min-width:0}#scrubber{display:block;appearance:none;width:100%;height:30px;background:transparent;cursor:ew-resize}#scrubber::-webkit-slider-runnable-track{height:1px;background:#d7d7cf}#scrubber::-webkit-slider-thumb{appearance:none;height:5px;width:5px;border-radius:50%;background:var(--ink);margin-top:-2px}#scrubber::-moz-range-track{height:1px;background:#d7d7cf}#scrubber::-moz-range-thumb{height:5px;width:5px;border:0;background:var(--ink);border-radius:50%}
+#clock{font-size:10px;font-variant-numeric:tabular-nums;white-space:nowrap}#clock .h{display:none}#back{font-size:10px;color:var(--ink-50);min-height:36px;display:none;position:absolute;left:0;bottom:18px}body.storm #back{display:block}
+.caption{display:flex;justify-content:center;align-items:center;gap:18px;margin-top:16px;color:var(--ink-35);font-size:9px}#legend{display:flex;gap:12px}#legend span{display:flex;align-items:center;gap:4px;font-size:9px}#legend i{width:10px;height:2px;background:var(--cc)}
+.city-key{display:flex;align-items:center;gap:6px}.city-key i{width:5px;height:5px;border-radius:50%;flex:none}.city-key i.far{background:#8a897b}.city-key i.near{background:#1b1b18;margin-left:10px}
+#tip{position:absolute;pointer-events:none;opacity:0;background:#ffffffeb;padding:8px 10px;max-width:calc(100% - 16px);z-index:4;transition:opacity .15s}#tip.on{opacity:1}#tip .n{font:21px var(--serif)}#tip .m{font-size:10px;color:var(--ink-50)}
+#loading{position:absolute;inset:0;display:grid;place-items:center;background:var(--paper);font:italic 24px var(--serif);z-index:9}#loading.off{opacity:0;pointer-events:none}
+#index{padding-top:100px;scroll-margin:24px}.section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px}#index .section-head{border-top:1px solid var(--rule);padding:20px 0 28px}.section-head p{color:var(--ink-50);font:italic 17px var(--serif);margin-top:8px}
+#count{display:flex;gap:24px;align-items:center;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-50)}#sort{display:flex;gap:12px}#sort button{font-size:9px;min-height:36px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-35)}#sort button.on{color:var(--ink)}
+#cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:0 28px}.card{display:block;text-align:left;width:100%;padding:24px 10px;border-top:1px solid var(--rule);min-width:0;transition:background .2s}.card:hover,.card.sel{background:var(--paper-2)}.card-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.card h3{font:400 28px/1 var(--serif);display:flex;align-items:center;gap:8px}.live-dot{display:none;width:5px;height:5px;background:var(--cc);border-radius:50%}.card.live .live-dot{display:block}.cat{font-size:9px;font-weight:600;letter-spacing:.08em;white-space:nowrap;text-transform:uppercase;display:flex;align-items:center;gap:6px}.cat i{width:6px;height:6px;border-radius:50%;background:var(--cc)}.card-meta{font-size:10px;color:var(--ink-50);margin-top:8px}.card-bottom{display:flex;justify-content:space-between;align-items:flex-end;margin-top:14px;gap:10px}.stats{display:flex;gap:12px}.stat{display:flex;flex-direction:column;gap:2px}.stat b{font-size:14px;font-weight:500;font-variant-numeric:tabular-nums}.stat small{font-size:8px;color:var(--ink-35)}.stat span{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-35)}.spark{width:88px;height:30px;flex:none}.spark path.a{fill:var(--cc);opacity:.15}.spark path.l{fill:none;stroke:var(--cc);stroke-width:1}.spark line{stroke:var(--rule);stroke-width:1}.empty{font:italic 24px var(--serif);padding:40px}
+#colophon{display:flex;justify-content:space-between;gap:40px;border-top:1px solid var(--rule);padding:28px 0 50px;margin-top:60px;font-size:10px;color:var(--ink-50)}#colophon p{max-width:670px}#colophon .brand{font:italic 28px var(--serif);color:var(--ink);white-space:nowrap}
+@media(max-width:859px){.measure{width:calc(100% - 36px)}.hero-copy{padding-block:64px}#hero{min-height:min(720px,92svh)}#ledger{grid-template-columns:repeat(3,1fr);gap:24px 0}.ledger-item{padding:0 14px}.ledger-item:nth-child(4){border:0;padding-left:0}#atlas{padding-top:50px}#atlas>.section-head{align-items:flex-start;flex-direction:column;gap:18px}#years{width:100%;justify-content:space-between;gap:8px}.year{font-size:13px}#map-cell{height:510px}#mast{top:30px;max-width:none}#title{font-size:31px}#subtitle{margin-top:7px}#readout{position:relative;top:auto;right:auto;width:100%;padding:0 0 16px;min-height:90px}#readout h3{margin-bottom:14px}#active-rows{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}#nearby-note{max-width:none;margin-top:14px}#back{position:static;padding-bottom:16px}#timeline{gap:12px}#vitals{max-width:320px}.caption{flex-wrap:wrap;gap:10px;font-size:8px}#index{padding-top:65px}#index .section-head{flex-direction:column;gap:16px}#count{flex-wrap:wrap}#colophon{flex-direction:column;gap:20px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media print{#hero{min-height:300px}.hero-copy{padding:30px 0}#hero h1{font-size:70px}.measure{width:100%}#years,#back,#timeline,.hero-links,#sort{display:none!important}#atlas,#index{padding-top:25px}#map-cell{height:500px}#readout{position:static;width:100%}#cards{grid-template-columns:repeat(2,minmax(0,1fr))}.card{break-inside:avoid}#colophon{margin-top:20px}*{animation:none!important}}
 </style>
 </head>
-<body class="playing">
-<div id="stage">
-  <canvas id="globe"></canvas>
-
-  <header id="mast">
-    <div class="eyebrow reveal" style="animation-delay:.1s"><span class="dot"></span>Tempest Atlas<span style="color:var(--ink-35);font-weight:400">/</span><span style="font-weight:400">Named hurricanes, 2020–2025</span></div>
-    <button id="back" class="reveal">
-      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7.5 1.5 3 6l4.5 4.5"/></svg>
-      Back to season
-    </button>
-    <h1 id="title" class="reveal" style="animation-delay:.2s"></h1>
-    <div id="subtitle" class="reveal" style="animation-delay:.32s"></div>
-  </header>
-
-  <div id="legend"></div>
-  <div id="hint">Drag to rotate · Scroll to zoom · Space to play</div>
-
-  <aside id="panel">
-    <div id="filters">
-      <div class="frow"><span class="flabel">Season</span><div id="years" class="frow" style="gap:4px"></div></div>
-      <div class="frow"><span class="flabel">Basin</span><div id="basins" class="frow" style="gap:4px"></div></div>
+<body>
+<header id="hero">
+  <canvas id="hero-field" aria-hidden="true"></canvas>
+  <div class="measure hero-copy">
+    <div class="eyebrow">A moving record / 2020—2025</div>
+    <h1>Tempest<br><em>Atlas.</em></h1>
+    <p class="lede">Six seasons of hurricanes, traced across two oceans. An atlas of where they formed, how they grew, and what they left behind.</p>
+    <nav class="hero-links" aria-label="Explore the atlas"><a href="#atlas">Explore the globe ↓</a><a href="#index">Browse the index</a></nav>
+  </div>
+</header>
+<main>
+<section id="ledger" class="measure" aria-label="Dataset statistics"></section>
+<section id="atlas" class="measure" aria-labelledby="plate-title">
+  <div class="section-head">
+    <h2 id="plate-title">The seasons, in motion</h2><nav id="years" aria-label="Focus a hurricane season"></nav>
+  </div>
+  <div id="atlas-frame" role="group" tabindex="0" aria-labelledby="plate-title" aria-describedby="map-description hint">
+    <div id="map-cell">
+      <canvas id="globe" role="img" aria-label="Hurricane tracks on an interactive globe" aria-describedby="map-description">Hurricane track map. Use the storm index below for names, dates and intensity, and select a storm for its landfall details.</canvas>
+      <div id="mast"><h3 id="title"></h3><div id="subtitle"></div></div>
+      <div id="tip"><div class="n"></div><div class="m"></div></div>
+      <div id="loading" role="status">Charting the atlas…</div>
     </div>
-    <div id="count"><span><b id="n">0</b> hurricanes</span><div id="sort"><button data-s="time" class="on">By date</button><button data-s="peak">By intensity</button></div></div>
-    <div id="cards"></div>
-  </aside>
-
-  <footer id="timeline">
-    <div id="transport">
-      <button id="play" title="Play / pause (space)">
-        <svg class="ic-play" viewBox="0 0 14 14"><path d="M3.5 1.5v11l9-5.5z"/></svg>
-        <svg class="ic-pause" viewBox="0 0 14 14"><path d="M2.5 1.5h3v11h-3zM8.5 1.5h3v11h-3z"/></svg>
-        <svg class="ic-replay" viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="1.5"><path d="M2.5 7a4.5 4.5 0 1 0 1.3-3.2"/><path d="M2 1.5v3h3"/></svg>
-      </button>
-      <div id="clock"><div class="d">—</div><div class="h">—</div></div>
-      <div id="speeds"></div>
-    </div>
-    <div id="track"><svg></svg></div>
-  </footer>
-
-  <div id="tip"><div class="n"></div><div class="m"></div></div>
-  <div id="loading">Charting the atlas…</div>
-</div>
+    <aside id="readout" aria-label="Storm notes"><h3>IN THE CURRENT</h3><div id="active-rows"></div><p id="quiet">Between storms.</p><div id="vitals" hidden></div><p id="nearby-note"></p></aside>
+    <button id="back">← Return to season</button>
+    <div id="timeline"><div id="transport"><button id="play" aria-label="Play" title="Play / pause (Space)"><svg class="ic-play" viewBox="0 0 14 14" aria-hidden="true"><path d="M3.5 1.5v11l9-5.5z"/></svg><svg class="ic-pause" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 1.5h3v11h-3zM8.5 1.5h3v11h-3z"/></svg><svg class="ic-replay" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7a4.5 4.5 0 1 0 1.3-3.2" stroke="white" fill="none"/></svg></button></div><div id="track"><input id="scrubber" type="range" min="0" max="10000" value="0" step="1" aria-label="Storm timeline"></div><div id="clock"><span class="d">—</span><span class="h"></span></div></div>
+  </div>
+  <div class="caption"><span>Wind intensity</span><div id="legend"></div><span class="city-key"><i class="far"></i>Major cities<i class="near"></i>Within 600 km of an active storm</span></div>
+  <p id="map-description" class="sr-only">Hurricane positions interpolated between six-hour observations. State and province boundaries provide context. Major cities are shown throughout, ranked by population; those within 600 kilometers of an active storm center are drawn darker. Proximity is geographic context, not confirmed impact. Select a year to focus that season. The index below provides storm details.</p>
+  <p id="hint" class="sr-only">Drag horizontally to rotate. Scroll to read. Ctrl or Command plus scroll to zoom. Focus the map and press Space to pause, or arrows to scrub.</p>
+  <p id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+</section>
+<section id="index" class="measure" aria-labelledby="index-title"><div class="section-head"><div><h2 id="index-title">Plate II — The index</h2><p>A record of each storm. Follows the selected season.</p></div><div id="count"><span><b id="n">0</b> hurricanes</span><div id="sort" aria-label="Sort storms"><button data-s="time" class="on" aria-pressed="true">By date</button><button data-s="peak" aria-pressed="false">By intensity</button></div></div></div><div id="cards"></div></section>
+</main>
+<footer id="colophon" class="measure"><div class="brand">Tempest Atlas.</div><p>Sources: <a href="https://www.nhc.noaa.gov/data/#hurdat">National Hurricane Center / HURDAT2</a>. Named Atlantic and Eastern Pacific storms that reached hurricane strength, 2020–2025. Six-hour positions are linearly interpolated; landfall records may fall between observations. Colors follow the Saffir–Simpson wind scale. Boundaries and city locations: <a href="https://www.naturalearthdata.com/">Natural Earth</a>. City proximity is geographic context, not confirmed storm impact. Historical observations, not a forecast.</p></footer>
+<noscript><p class="measure">JavaScript is required to draw the atlas. <a href="data/storms.json">Download the storm records</a>.</p></noscript>
 
 <script src="lib/d3.min.js"></script>
 <script src="lib/topojson-client.min.js"></script>
@@ -198,7 +93,7 @@
 const RAD = Math.PI/180;
 const CATS = [
   {k:-1, short:'TD',   name:'Depression',  color:'#b9b9b9'},
-  {k:0,  short:'TS',   name:'Trop. Storm', color:'#82b8e0'},
+  {k:0,  short:'TS',   name:'Trop. Storm', color:'#91918a'},
   {k:1,  short:'Cat 1',name:'Category 1',  color:'#efcd3a'},
   {k:2,  short:'Cat 2',name:'Category 2',  color:'#f29e38'},
   {k:3,  short:'Cat 3',name:'Category 3',  color:'#e8672a'},
@@ -214,10 +109,17 @@ const fmtShort = d3.utcFormat('%b %-d');
 const fmtMonth = d3.utcFormat('%b');
 
 /* ---------------- data ---------------- */
-const [rawStorms, world] = await Promise.all([
-  fetch('data/storms.json').then(r=>r.json()),
-  fetch('data/land-110m.json').then(r=>r.json()),
+const loadJSON = async url => { const r=await fetch(url); if(!r.ok) throw new Error(`Could not load ${url} (${r.status})`); return r.json(); };
+const [rawStorms, world, countries, mapContext] = await Promise.all([
+  loadJSON('data/storms.json'), loadJSON('data/land-110m.json'), loadJSON('data/countries-110m.json'), loadJSON('data/map-context.json')
 ]);
+const borders=topojson.mesh(countries,countries.objects.countries,(a,b)=>a!==b);
+const motionQuery=matchMedia('(prefers-reduced-motion: reduce)');
+let reducedMotion=motionQuery.matches;
+let userInteracted=false, overview=reducedMotion;
+const atlasFrame=document.getElementById('atlas-frame');
+const announce=text=>{document.getElementById('announcement').textContent=text;};
+function interact(){userInteracted=true;overview=false;}
 const land = topojson.feature(world, world.objects.land);
 const storms = rawStorms.map(s => {
   const track = s.track.map(p => ({ms:Date.parse(p[0]), lat:p[1], lon:p[2], w:p[3], p:p[4], st:p[5]}));
@@ -233,9 +135,9 @@ const YEARS = [...new Set(storms.map(s=>s.year))].sort();
 
 /* ---------------- state ---------------- */
 const S = {
-  mode:'season', year:YEARS[YEARS.length-1], basin:'all', sort:'time',
+  mode:'season', year:YEARS[YEARS.length-1], sort:'time',
   visible:[], selected:null, hover:null, hoverFromGlobe:false,
-  time:0, t0:0, t1:0, playing:true, speed:1, ended:false,
+  time:0, t0:0, t1:0, playing:false, speed:1, ended:false,
   rotate:[150,-10,0], scale:0.82,
   dragging:false, lastInteract:0, fly:null, scrubbing:false,
 };
@@ -243,23 +145,25 @@ const SPEEDS = [0.5,1,2,4];
 const hoursPerSec = () => (S.mode==='storm' ? 9 : (S.year==='all' ? 240 : 48)) * S.speed;
 
 /* ---------------- canvas setup ---------------- */
-const stage = document.getElementById('stage');
+const stage = document.getElementById('map-cell');
 const canvas = document.getElementById('globe');
 const ctx = canvas.getContext('2d');
-let W=0,H=0,DPR=1, freeW=0, cx=0, cy=0, R=0;
-const panelW = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--panel-w'));
+let W=0,H=0,DPR=1, cx=0, cy=0, R=0, obstaclesDirty=true;
 const projection = d3.geoOrthographic().clipAngle(90).precision(0.3);
 const path = d3.geoPath(projection, ctx);
 const graticule = d3.geoGraticule10();
 
 function resize(){
-  W = stage.clientWidth; H = stage.clientHeight; DPR = Math.min(2, window.devicePixelRatio||1);
-  freeW = W - panelW();
-  canvas.width = W*DPR; canvas.height = H*DPR; canvas.style.width=W+'px'; canvas.style.height=H+'px';
-  cx = freeW*0.52; cy = H*0.5 - 10;
-  R = Math.min(freeW*0.40, (H-170)*0.44);
+  const w=stage.clientWidth,h=stage.clientHeight;
+  const dpr=Math.min(2,devicePixelRatio||1,Math.sqrt(2e6/Math.max(1,w*h)));
+  if(W===w && H===h && DPR===dpr) return false;
+  W=w;H=h;DPR=dpr;
+  canvas.width=Math.floor(W*DPR);canvas.height=Math.floor(H*DPR);
+  cx=W*(W<860?.5:.48);cy=H*(W<860?.58:.51);R=Math.min(W*.46,H*.485);
+  obstaclesDirty=true;
+  return true;
 }
-window.addEventListener('resize', resize); resize();
+resize();
 
 /* ---------------- versor (quaternion rotation) ---------------- */
 const versor = {
@@ -277,48 +181,48 @@ const versor = {
     return t=>{ const A=Math.sin((1-t)*th)/st, B=Math.sin(t*th)/st; return a.map((v,i)=>v*A+b[i]*B); }; }
 };
 function flyTo(lon, lat, scale, dur=1900, onEnd){
+  if(reducedMotion){ S.rotate=[-lon,-lat,0];S.scale=scale;S.fly=null;return; }
   const q0=versor.fromAngles(S.rotate), q1=versor.fromAngles([-lon,-lat,0]);
   const iq=versor.slerp(q0,q1), s0=S.scale, s1=scale;
   const dist = d3.geoDistance([-S.rotate[0],-S.rotate[1]],[lon,lat]);
   const dip = Math.max(0, Math.min(s0,s1)-0.7) * Math.min(1, dist/1.2) * 0.85 + Math.min(s0,s1)*0.12*Math.min(1,dist/0.6);
-  S.fly = { start:performance.now(), dur, onEnd,
+  S.fly = { elapsed:0, dur, onEnd,
     step(t){ const e=d3.easeCubicInOut(t); S.rotate=versor.toAngles(iq(e)); S.rotate[2]=0;
              S.scale = Math.max(0.6, s0+(s1-s0)*e - dip*Math.sin(Math.PI*e)); } };
 }
 function stormView(s){
-  const want = Math.min(freeW, H-170)*0.30;
+  const want = Math.min(W, H)*0.30;
   const ang = Math.min(Math.max(s.radius,0.11)+0.07, 1.15);
   const scale = Math.max(1.25, Math.min(3.0, want/(R*Math.sin(ang))));
   return {lon:s.center[0], lat:s.center[1], scale};
 }
-const basinCenter = () => S.basin==='Atlantic' ? [-58,26] : S.basin==='East Pacific' ? [-118,16] : [-92,22];
+function seasonView(){
+  const points=S.visible.flatMap(s=>s.track.filter(p=>p.w>=64).map(p=>[p.lon,p.lat]));
+  const center=d3.geoCentroid({type:'MultiPoint',coordinates:points});
+  const radius=d3.quantile(points.map(p=>d3.geoDistance(center,p)).sort(d3.ascending),.9)||1;
+  return {lon:center[0],lat:center[1],scale:Math.max(1.08,Math.min(1.45,.96/Math.sin(Math.min(radius+.16,Math.PI/2))))};
+}
+function focusSeason(){const v=seasonView();flyTo(v.lon,v.lat,v.scale,1700);}
+
 
 /* ---------------- filtering ---------------- */
 function applyFilters(){
-  S.visible = storms.filter(s => (S.year==='all' || s.year===S.year) && (S.basin==='all' || s.basin===S.basin));
+  S.visible = storms.filter(s => s.year===S.year);
   if (S.sort==='peak') S.visible.sort((a,b)=>b.peak-a.peak || a.startMs-b.startMs); else S.visible.sort((a,b)=>a.startMs-b.startMs);
   if (S.visible.length){
     S.t0 = d3.min(S.visible, s=>s.startMs) - 2*864e5;
     S.t1 = d3.max(S.visible, s=>s.endMs) + 2*864e5;
   } else { S.t0 = Date.UTC(+S.year||2020,0,1); S.t1 = S.t0 + 365*864e5; }
-  S.time = S.t0; S.ended=false;
-  renderCards(); renderMast(); buildTimeline();
+  S.time = S.visible.length ? d3.min(S.visible,s=>s.track.find(p=>p.w>=64)?.ms??s.startMs) : S.t0; S.ended=false;
+  renderCards(); renderMast();  overview=reducedMotion;
 }
 
 /* ---------------- masthead ---------------- */
 const titleEl = document.getElementById('title'), subEl = document.getElementById('subtitle');
 function renderMast(){
-  if (S.mode==='storm' && S.selected){
-    const s=S.selected;
-    titleEl.innerHTML = `Hurricane <em>${s.name}</em>`;
-    const lf = s.landfalls.length;
-    subEl.innerHTML = `<span class="badge" style="--cc:${s.color}"><i></i>${CATS[s.cat+1].name}</span><span class="sep"></span>${s.basin}<span class="sep"></span>Peak ${s.peak} kt${s.minp?`<span class="sep"></span>${s.minp} hPa`:''}<span class="sep"></span>${fmtShort(new Date(s.startMs))} – ${fmtDate(new Date(s.endMs))}${lf?`<span class="sep"></span>${lf} landfall${lf>1?'s':''}`:''}`;
-  } else {
-    const n=S.visible.length, c5=S.visible.filter(s=>s.cat===5).length, major=S.visible.filter(s=>s.cat>=3).length;
-    titleEl.innerHTML = S.year==='all' ? `Every hurricane, <em>2020 – ${YEARS[YEARS.length-1]}</em>` : `The <em>${S.year}</em> hurricane season`;
-    subEl.innerHTML = `${n} hurricane${n===1?'':'s'}<span class="sep"></span>${major} major<span class="sep"></span>${c5} reached Category 5<span class="sep"></span>${S.basin==='all'?'Atlantic & East Pacific':S.basin}`;
-  }
-  document.body.classList.toggle('storm', S.mode==='storm');
+  titleEl.innerHTML=S.mode==='storm'?`<em>${S.selected.name}</em>`:`The <em>${S.year}</em> season`;
+  subEl.textContent=S.mode==='storm'?`${S.selected.basin} · ${S.selected.year}`:`${S.visible.length} hurricanes · Atlantic & Eastern Pacific`;
+  document.body.classList.toggle('storm',S.mode==='storm');
 }
 
 /* ---------------- cards ---------------- */
@@ -330,14 +234,14 @@ function sparkline(s){
   const y = d3.scaleLinear().domain([0, Math.max(150, s.peak)]).range([28,2]);
   const line = d3.line().x(p=>x(p.ms)).y(p=>y(p.w)).curve(d3.curveMonotoneX);
   const area = d3.area().x(p=>x(p.ms)).y0(28).y1(p=>y(p.w)).curve(d3.curveMonotoneX);
-  return `<svg class="spark" viewBox="0 0 104 30"><line x1="0" x2="104" y1="${y(64)}" y2="${y(64)}" stroke-dasharray="2 3"/><path class="a" d="${area(pts)}"/><path class="l" d="${line(pts)}"/></svg>`;
+  return `<svg aria-hidden="true" class="spark" viewBox="0 0 104 30"><line x1="0" x2="104" y1="${y(64)}" y2="${y(64)}" stroke-dasharray="2 3"/><path class="a" d="${area(pts)}"/><path class="l" d="${line(pts)}"/></svg>`;
 }
 function renderCards(){
   cardsEl.innerHTML=''; cardMap.clear();
   document.getElementById('n').textContent = S.visible.length;
   if (!S.visible.length){ cardsEl.innerHTML = `<div class="empty">No hurricanes match.</div>`; return; }
   S.visible.forEach((s,i)=>{
-    const el=document.createElement('div'); el.className='card'; el.style.setProperty('--cc', s.color); el.style.animationDelay = Math.min(i*40, 500)+'ms';
+    const el=document.createElement('button'); el.type='button'; el.className='card'; el.setAttribute('aria-label',`${s.name}, ${s.year}, ${s.basin}, ${CATS[s.cat+1].name}. ${fmtShort(new Date(s.startMs))} to ${fmtShort(new Date(s.endMs))}. Peak ${s.peak} knots, minimum pressure ${s.minp??'unknown'} hectopascals, ${s.days.toFixed(1)} days. View storm details`); el.style.setProperty('--cc', s.color); el.style.animationDelay = Math.min(i*40, 500)+'ms';
     el.innerHTML = `
       <div class="card-top"><h3><span class="live-dot"></span>${s.name}</h3><span class="cat"><i></i>${CATS[s.cat+1].short}</span></div>
       <div class="card-meta">${s.basin} · ${fmtShort(new Date(s.startMs))} – ${fmtShort(new Date(s.endMs))}, ${s.year}</div>
@@ -363,36 +267,35 @@ function updateCardStates(){
 
 /* ---------------- selection ---------------- */
 function selectStorm(s){
-  if (S.selected===s && S.mode==='storm'){ S.time=s.startMs; S.playing=true; S.ended=false; return; }
-  S.selected=s; S.mode='storm'; S.hover=null;
-  S.t0=s.startMs; S.t1=s.endMs; S.time=S.t0; S.playing=false; S.ended=false;
+  interact();
+  S.selected=s;S.mode='storm';S.hover=null;
+  S.t0=s.startMs;S.t1=s.endMs;S.time=S.t0;S.playing=false;S.ended=false;
   const v=stormView(s);
-  flyTo(v.lon, v.lat, v.scale, 2000, ()=>{ S.playing=true; });
-  renderMast(); buildTimeline();
-  const el=cardMap.get(s.id); if(el) el.scrollIntoView({block:'nearest', behavior:'smooth'});
+  flyTo(v.lon,v.lat,v.scale,2000,()=>{S.playing=!reducedMotion;});
+  renderMast();refresh();
+  announce(`${s.name}, ${s.year}. Peak ${s.peak} knots. Storm details selected.`);
+  atlasFrame.focus({preventScroll:true});
+  atlasFrame.scrollIntoView({block:'center',behavior:reducedMotion?'instant':'smooth'});
 }
 function backToSeason(){
-  S.mode='season'; S.selected=null;
-  applyFilters();
-  const c=basinCenter(); flyTo(c[0], c[1], 1, 1700);
-  S.playing=true;
+  interact();S.mode='season';S.selected=null;applyFilters();
+  focusSeason();S.playing=!reducedMotion;
+  refresh();announce('Returned to season.');atlasFrame.focus({preventScroll:true});
 }
-document.getElementById('back').addEventListener('click', backToSeason);
+document.getElementById('back').addEventListener('click',backToSeason);
 
 /* ---------------- filters UI ---------------- */
-const yearsEl=document.getElementById('years'), basinsEl=document.getElementById('basins');
-function chips(el, items, get, set){
-  el.innerHTML='';
-  items.forEach(it=>{ const b=document.createElement('button'); b.className='chip'+(get()===it.v?' on':''); b.textContent=it.l;
-    b.addEventListener('click', ()=>{ set(it.v); chips(el,items,get,set); });
-    el.appendChild(b); });
-}
-function setFilter(fn){ fn(); if (S.mode==='storm'){ S.mode='season'; S.selected=null; } applyFilters(); const c=basinCenter(); flyTo(c[0],c[1],1,1500); S.playing=true; }
-chips(yearsEl, [{l:'All',v:'all'}, ...YEARS.map(y=>({l:String(y),v:y}))], ()=>S.year, v=>setFilter(()=>S.year=v));
-chips(basinsEl, [{l:'Both',v:'all'},{l:'Atlantic',v:'Atlantic'},{l:'E. Pacific',v:'East Pacific'}], ()=>S.basin, v=>setFilter(()=>S.basin=v));
+const yearsEl=document.getElementById('years');
+YEARS.forEach(year=>{
+  const button=document.createElement('button');button.className='year';button.textContent=year;button.setAttribute('aria-label',`Focus ${year} season`);
+  button.addEventListener('click',()=>{interact();S.year=year;S.mode='season';S.selected=null;S.hover=null;applyFilters();focusSeason();S.playing=!reducedMotion;updateYears();refresh();announce(`${year} season. ${S.visible.length} hurricanes.`);});
+  yearsEl.appendChild(button);
+});
+function updateYears(){[...yearsEl.children].forEach((b,i)=>{const active=YEARS[i]===S.year;b.classList.toggle('on',active);b.setAttribute('aria-pressed',active);});}
+updateYears();
 document.querySelectorAll('#sort button').forEach(b=>b.addEventListener('click',()=>{
-  document.querySelectorAll('#sort button').forEach(x=>x.classList.toggle('on',x===b)); S.sort=b.dataset.s;
-  const t=S.time, sel=S.selected, mode=S.mode, t0=S.t0, t1=S.t1; applyFilters(); S.time=t; S.selected=sel; S.mode=mode; if(mode==='storm'){S.t0=t0;S.t1=t1;renderMast();buildTimeline();}
+  document.querySelectorAll('#sort button').forEach(x=>{x.classList.toggle('on',x===b);x.setAttribute('aria-pressed',x===b);}); S.sort=b.dataset.s;
+  const t=S.time, sel=S.selected, mode=S.mode, t0=S.t0, t1=S.t1; applyFilters(); S.time=t; S.selected=sel; S.mode=mode; if(mode==='storm'){S.t0=t0;S.t1=t1;renderMast();} refresh();
 }));
 
 /* legend */
@@ -400,83 +303,65 @@ document.getElementById('legend').innerHTML = CATS.slice(1).map(c=>`<span style=
 
 /* ---------------- transport ---------------- */
 const playBtn=document.getElementById('play');
-function togglePlay(){ if (S.ended && !S.playing){ S.time=S.t0; S.ended=false; } S.playing=!S.playing; }
-playBtn.addEventListener('click', togglePlay);
-window.addEventListener('keydown', e=>{
-  if (e.target.tagName==='INPUT') return;
-  if (e.code==='Space'){ e.preventDefault(); togglePlay(); }
-  if (e.code==='Escape' && S.mode==='storm') backToSeason();
-  if (e.code==='ArrowRight'){ S.time=Math.min(S.t1, S.time + hoursPerSec()*36e5*0.25); S.ended=false; }
-  if (e.code==='ArrowLeft'){ S.time=Math.max(S.t0, S.time - hoursPerSec()*36e5*0.25); S.ended=false; }
-});
-const speedsEl=document.getElementById('speeds');
-function renderSpeeds(){ speedsEl.innerHTML=''; SPEEDS.forEach(v=>{ const b=document.createElement('button'); b.textContent=v+'×'; b.className=v===S.speed?'on':''; b.addEventListener('click',()=>{S.speed=v;renderSpeeds();}); speedsEl.appendChild(b); }); }
-renderSpeeds();
-const clockD=document.querySelector('#clock .d'), clockH=document.querySelector('#clock .h');
-
-/* ---------------- timeline (SVG) ---------------- */
-const tlSvg = d3.select('#track svg');
-let tlX = null, tlPlayhead=null, tlW=0, tlH=0;
-function buildTimeline(){
-  const box=document.getElementById('track').getBoundingClientRect(); tlW=box.width; tlH=box.height;
-  tlSvg.selectAll('*').remove();
-  tlX = d3.scaleUtc().domain([S.t0,S.t1]).range([0,tlW]);
-  const laneTop=8, laneBottom=tlH-30;
-  const g=tlSvg.append('g');
-  const ticks = S.mode==='storm' ? tlX.ticks(d3.utcDay.every(Math.max(1,Math.round((S.t1-S.t0)/864e5/Math.max(4,tlW/90))))) : (S.year==='all'? tlX.ticks(d3.utcMonth.every(3)) : tlX.ticks(d3.utcMonth.every(1)));
-  const ax=g.append('g').attr('transform',`translate(0,${tlH-24})`);
-  ax.selectAll('line').data(ticks).join('line').attr('x1',d=>tlX(d)).attr('x2',d=>tlX(d)).attr('y1',0).attr('y2',5).attr('stroke','#bbb');
-  ax.selectAll('text').data(ticks).join('text').attr('x',d=>tlX(d)+4).attr('y',16).attr('fill','#727272').attr('font-size',10).attr('font-weight',600).attr('letter-spacing','.06em')
-    .text(d=> S.mode==='storm' ? fmtShort(d).toUpperCase() : (S.year==='all' ? (d.getUTCMonth()===0 ? d.getUTCFullYear() : fmtMonth(d).toUpperCase()) : fmtMonth(d).toUpperCase()));
-  g.append('line').attr('x1',0).attr('x2',tlW).attr('y1',tlH-24).attr('y2',tlH-24).attr('stroke','#cfcfcf');
-
-  if (S.mode==='storm' && S.selected){
-    const s=S.selected, y=laneTop+(laneBottom-laneTop)/2, h=10;
-    const segs=g.append('g');
-    for (let i=1;i<s.track.length;i++){ const a=s.track[i-1], b=s.track[i];
-      segs.append('rect').attr('x',tlX(a.ms)).attr('y',y-h/2).attr('width',Math.max(0.5,tlX(b.ms)-tlX(a.ms))).attr('height',h).attr('fill',colorOf(a.w)); }
-    g.selectAll('.lf').data(s.landfalls).join('g').attr('transform',d=>`translate(${tlX(d.ms)},${y})`)
-      .call(gg=>{ gg.append('line').attr('y1',-14).attr('y2',14).attr('stroke','#121212').attr('stroke-width',1.2);
-                  gg.append('text').attr('y',-19).attr('text-anchor','middle').attr('fill','#121212').attr('font-size',9).attr('font-weight',700).attr('letter-spacing','.1em').text('LANDFALL'); });
-  } else {
-    const lanes=[]; const placed=S.visible.slice().sort((a,b)=>a.startMs-b.startMs).map(s=>{
-      let li=lanes.findIndex(end=>end<=s.startMs); if(li<0){ lanes.push(0); li=lanes.length-1; } lanes[li]=s.endMs+864e5; return {s,li}; });
-    const n=Math.max(1,lanes.length), lh=Math.min(5, (laneBottom-laneTop)/n - 1.5), gap=1.5, total=n*(lh+gap), top=laneTop+((laneBottom-laneTop)-total)/2;
-    g.selectAll('.st').data(placed).join('rect').attr('class','st')
-      .attr('x',d=>tlX(d.s.startMs)).attr('y',d=>top+d.li*(lh+gap)).attr('width',d=>Math.max(2,tlX(d.s.endMs)-tlX(d.s.startMs))).attr('height',lh).attr('rx',lh/2)
-      .attr('fill',d=>d.s.color).attr('opacity',.85).style('cursor','pointer')
-      .on('mouseenter',(e,d)=>{S.hover=d.s;S.hoverFromGlobe=false;}).on('mouseleave',()=>{S.hover=null;}).on('click',(e,d)=>{e.stopPropagation(); selectStorm(d.s);});
+function togglePlay(){ interact(); if(S.fly){S.fly.onEnd=null;} if (S.ended && !S.playing){S.time=S.t0;S.ended=false;} S.playing=!S.playing;refresh(); }
+playBtn.addEventListener('click',togglePlay);
+atlasFrame.addEventListener('keydown',e=>{
+  if(e.code==='Escape' && S.mode==='storm'){e.preventDefault();backToSeason();return;}
+  if(e.target!==atlasFrame) return;
+  if(e.code==='Space'){e.preventDefault();togglePlay();}
+  if(e.code==='ArrowRight'||e.code==='ArrowLeft'){
+    e.preventDefault();interact();S.fly=null;S.time=Math.max(S.t0,Math.min(S.t1,S.time+(e.code==='ArrowRight'?1:-1)*hoursPerSec()*36e5*.25));S.ended=false;refresh();announceTime();
   }
-  tlPlayhead=g.append('g');
-  tlPlayhead.append('line').attr('y1',0).attr('y2',tlH-24).attr('stroke','#121212').attr('stroke-width',1.2);
-  tlPlayhead.append('path').attr('d','M-4,0 L4,0 L0,5 Z').attr('fill','#121212');
-  const scrub=e=>{ const [mx]=d3.pointer(e, tlSvg.node()); S.time=Math.max(S.t0,Math.min(S.t1,tlX.invert(mx).getTime())); S.ended=false; };
-  tlSvg.on('pointerdown', e=>{ S.scrubbing=true; S.wasPlaying=S.playing; S.playing=false; scrub(e); tlSvg.node().setPointerCapture(e.pointerId); })
-       .on('pointermove', e=>{ if(S.scrubbing) scrub(e); })
-       .on('pointerup pointercancel', e=>{ if(!S.scrubbing) return; S.scrubbing=false; S.playing=S.wasPlaying; });
-}
-window.addEventListener('resize', ()=>buildTimeline());
+});
+const clockD=document.querySelector('#clock .d');
+const scrubber=document.getElementById('scrubber');
+function announceTime(){announce(fmtDate(new Date(S.time))+', '+fmtTime(new Date(S.time)));}
+scrubber.addEventListener('input',()=>{interact();S.playing=false;S.fly=null;S.time=S.t0+(S.t1-S.t0)*scrubber.value/10000;S.ended=false;refresh();});
+scrubber.addEventListener('change',announceTime);
 
 /* ---------------- globe interaction ---------------- */
-let dragStart=null;
-d3.select(canvas).call(d3.drag()
-  .on('start', e=>{ S.dragging=true; S.fly=null; dragStart={x:e.x,y:e.y,r:S.rotate.slice()}; canvas.classList.add('grabbing'); S.lastInteract=performance.now(); })
-  .on('drag', e=>{ const k = 57/(R*S.scale)*0.9; S.rotate=[dragStart.r[0]+(e.x-dragStart.x)*k, Math.max(-88,Math.min(88,dragStart.r[1]-(e.y-dragStart.y)*k)),0]; S.lastInteract=performance.now(); })
-  .on('end', ()=>{ S.dragging=false; canvas.classList.remove('grabbing'); S.lastInteract=performance.now(); }));
-canvas.addEventListener('wheel', e=>{ e.preventDefault(); S.fly=null; S.scale=Math.max(0.7,Math.min(5,S.scale*Math.exp(-e.deltaY*0.0016))); S.lastInteract=performance.now(); }, {passive:false});
+let dragStart=null, suppressClick=false;
+canvas.addEventListener('pointerdown',e=>{
+  if(!e.isPrimary){dragStart=null;S.dragging=false;return;} if(e.button!==0) return;
+  interact();S.fly=null;suppressClick=false;
+  dragStart={id:e.pointerId,x:e.clientX,y:e.clientY,r:S.rotate.slice(),touch:e.pointerType==='touch'};
+  canvas.setPointerCapture(e.pointerId);S.lastInteract=performance.now();
+});
+canvas.addEventListener('pointermove',e=>{
+  if(!dragStart||dragStart.id!==e.pointerId) return;
+  const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;
+  if(!S.dragging){
+    if(Math.hypot(dx,dy)<8)return;
+    suppressClick=true;
+    if(dragStart.touch && Math.abs(dy)>=Math.abs(dx)){dragStart=null;return;}
+    S.dragging=true;canvas.classList.add('grabbing');
+  }
+  const k=57/(R*S.scale)*.9;
+  S.rotate=[dragStart.r[0]+dx*k,Math.max(-88,Math.min(88,dragStart.r[1]-(dragStart.touch?0:dy*k))),0];
+  S.lastInteract=performance.now();
+});
+function endDrag(){dragStart=null;S.dragging=false;canvas.classList.remove('grabbing');S.lastInteract=performance.now();}
+canvas.addEventListener('pointerup',endDrag);canvas.addEventListener('pointercancel',()=>{suppressClick=true;endDrag();});canvas.addEventListener('lostpointercapture',endDrag);
+function zoom(factor){interact();S.fly=null;S.scale=Math.max(.7,Math.min(5,S.scale*factor));S.lastInteract=performance.now();refresh();}
+canvas.addEventListener('wheel',e=>{
+  if(e.ctrlKey||e.metaKey){e.preventDefault();const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?H:1);zoom(Math.exp(-Math.max(-400,Math.min(400,delta))*.0016));}
+},{passive:false});
+canvas.addEventListener('dblclick',e=>{e.preventDefault();zoom(1.25);});
 
 const tip=document.getElementById('tip');
 let mouse=null;
 canvas.addEventListener('mousemove', e=>{ mouse=[e.offsetX,e.offsetY]; });
 canvas.addEventListener('mouseleave', ()=>{ mouse=null; if (S.hover && S.hoverFromGlobe) S.hover=null; tip.classList.remove('on'); });
-canvas.addEventListener('click', ()=>{ if (S.hover && S.hoverFromGlobe && !S.dragging) selectStorm(S.hover); });
+canvas.addEventListener('click', ()=>{if(suppressClick)return;atlasFrame.focus({preventScroll:true});if(S.hover && S.hoverFromGlobe)selectStorm(S.hover);});
+window.addEventListener('scroll',()=>{mouse=null;tip.classList.remove('on');},{passive:true});
 function hitTest(){
   if (!mouse || S.dragging) return;
+  const hitTime=overview&&S.mode==='season'?S.t1:S.time;
   let best=null, bd=12*12;
   const center=[-S.rotate[0],-S.rotate[1]];
   for (const s of S.visible){
-    if (s.startMs > S.time) continue;
-    for (const p of s.track){ if (p.ms>S.time) break;
+    if (s.startMs > hitTime) continue;
+    for (const p of s.track){ if (p.ms>hitTime) break;
       if (d3.geoDistance(center,[p.lon,p.lat])>1.55) continue;
       const q=projection([p.lon,p.lat]); if(!q) continue;
       const d=(q[0]-mouse[0])**2+(q[1]-mouse[1])**2; if (d<bd){ bd=d; best={s,p,q}; } }
@@ -484,9 +369,10 @@ function hitTest(){
   if (best){
     if (!S.hover || S.hoverFromGlobe){ S.hover=best.s; S.hoverFromGlobe=true; }
     canvas.classList.add('pointing');
-    tip.style.left=mouse[0]+'px'; tip.style.top=mouse[1]+'px';
+
     tip.querySelector('.n').textContent=best.s.name;
     tip.querySelector('.m').innerHTML=`<b>${CATS[catOf(best.p.w)+1].short}</b> · ${best.p.w} kt · ${fmtShort(new Date(best.p.ms))}, ${fmtTime(new Date(best.p.ms))}`;
+    tip.style.left=Math.max(8,Math.min(W-tip.offsetWidth-8,mouse[0]+14))+'px';tip.style.top=Math.max(8,Math.min(H-tip.offsetHeight-8,mouse[1]-tip.offsetHeight/2))+'px';
     tip.classList.add('on');
   } else { if (S.hoverFromGlobe){ S.hover=null; S.hoverFromGlobe=false; } canvas.classList.remove('pointing'); tip.classList.remove('on'); }
 }
@@ -501,47 +387,84 @@ function posAt(s, t){
 function drawGlobe(){
   const sc=R*S.scale;
   projection.rotate(S.rotate).scale(sc).translate([cx,cy]);
-  ctx.setTransform(DPR,0,0,DPR,0,0); ctx.clearRect(0,0,W,H);
-
-  // soft shadow under the globe
-  ctx.save(); ctx.shadowColor='rgba(0,0,0,.10)'; ctx.shadowBlur=40; ctx.shadowOffsetY=12;
-  ctx.fillStyle='#f6f6f4'; ctx.beginPath(); ctx.arc(cx,cy,sc,0,Math.PI*2); ctx.fill(); ctx.restore();
-
-  // ocean
-  const ocean=ctx.createRadialGradient(cx-sc*0.3,cy-sc*0.35,sc*0.1,cx,cy,sc);
-  ocean.addColorStop(0,'#ffffff'); ocean.addColorStop(1,'#eeeeeb');
-  ctx.fillStyle=ocean; ctx.beginPath(); ctx.arc(cx,cy,sc,0,Math.PI*2); ctx.fill();
-
-  // graticule
-  ctx.beginPath(); path(graticule); ctx.strokeStyle='rgba(0,0,0,.05)'; ctx.lineWidth=0.7; ctx.stroke();
-
-  // land
-  ctx.beginPath(); path(land); ctx.fillStyle='#e1e1dd'; ctx.fill();
-  ctx.strokeStyle='#b7b7b2'; ctx.lineWidth=0.7; ctx.stroke();
-
-  // limb
-  const limb=ctx.createRadialGradient(cx,cy,sc*0.7,cx,cy,sc);
-  limb.addColorStop(0,'rgba(0,0,0,0)'); limb.addColorStop(1,'rgba(0,0,0,.07)');
-  ctx.fillStyle=limb; ctx.beginPath(); ctx.arc(cx,cy,sc,0,Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx,cy,sc,0,Math.PI*2); ctx.strokeStyle='#c9c9c5'; ctx.lineWidth=1; ctx.stroke();
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,W,H);
+  // The ocean is the page itself; no sphere outline, shadow or frame.
+  ctx.beginPath();path(land);ctx.fillStyle='#f0f0eb';ctx.fill();
+  ctx.strokeStyle='#d4d4ca';ctx.lineWidth=.55;ctx.stroke();
+  ctx.beginPath();path(borders);ctx.strokeStyle='#d6d6ce';ctx.lineWidth=.5;ctx.stroke();
+  ctx.beginPath();path(mapContext.states);ctx.strokeStyle='#dadad2';ctx.lineWidth=.45;ctx.stroke();
+  const fade=ctx.createRadialGradient(cx,cy,sc*.74,cx,cy,sc);
+  fade.addColorStop(0,'rgba(255,255,255,0)');fade.addColorStop(1,'rgba(255,255,255,.9)');
+  ctx.fillStyle=fade;ctx.beginPath();ctx.arc(cx,cy,sc,0,Math.PI*2);ctx.fill();
+}
+/* Cities are a permanent basemap layer ranked by population, so the set only
+   changes when the reader zooms — never as storms drift past. Proximity to an
+   active storm changes a city's WEIGHT, never whether it exists. */
+const CITIES=mapContext.cities.slice().sort((a,b)=>b.population-a.population);
+let nearbyCities=[],cityLabels=[],nearbyNames=new Set(),obstacles=[];
+function measureObstacles(){
+  obstaclesDirty=false;obstacles=[];
+  const base=stage.getBoundingClientRect();
+  for(const el of [document.getElementById('mast'),document.getElementById('readout')]){
+    if(!el||el.hidden)continue;
+    const r=el.getBoundingClientRect();if(!r.width||!r.height)continue;
+    const box={x:r.left-base.left-10,y:r.top-base.top-6,w:r.width+20,h:r.height+12};
+    if(box.x+box.w>0&&box.y+box.h>0&&box.x<W&&box.y<H)obstacles.push(box);
+  }
+}
+const hits=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+function updateNearby(){
+  const active=S.mode==='storm'?[S.selected]:S.visible.filter(s=>S.time>=s.startMs&&S.time<=s.endMs);
+  const positions=active.map(s=>posAt(s,S.time));
+  const near=CITIES.filter(c=>positions.some(p=>d3.geoDistance(c.coordinates,[p.lon,p.lat])*6371<=600));
+  nearbyNames=new Set(near.map(c=>c.name));
+  nearbyCities=near.slice(0,6);
+  document.getElementById('nearby-note').textContent=nearbyCities.length?`Within 600 km · ${nearbyCities.map(c=>c.name).join(', ')}`:'';
+}
+function drawCities(){
+  if(obstaclesDirty)measureObstacles();
+  cityLabels=[];
+  const center=[-S.rotate[0],-S.rotate[1]];
+  const budget=Math.round(Math.max(14,Math.min(48,14+(S.scale-.8)*14)));
+  let drawn=0;
+  ctx.textBaseline='middle';
+  for(const city of CITIES){
+    if(drawn>=budget)break;
+    if(d3.geoDistance(center,city.coordinates)>1.36)continue;
+    const q=projection(city.coordinates);if(!q)continue;
+    if(q[0]<10||q[0]>W-14||q[1]<14||q[1]>H-12)continue;
+    const near=nearbyNames.has(city.name);
+    drawn++;
+    ctx.beginPath();ctx.arc(q[0],q[1],near?3.1:2,0,Math.PI*2);
+    ctx.fillStyle=near?'#1b1b18':'#8a897b';ctx.fill();
+    if(near){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();}
+    ctx.font=`${near?600:500} 10px "Libre Franklin",sans-serif`;
+    const rect={x:q[0]+7,y:q[1]-7,w:ctx.measureText(city.name).width+5,h:14};
+    if(rect.x+rect.w>W-8)continue;
+    if(cityLabels.some(r=>hits(rect,r))||obstacles.some(o=>hits(rect,o)))continue;
+    ctx.lineWidth=3.2;ctx.strokeStyle='rgba(255,255,255,.9)';ctx.strokeText(city.name,rect.x,q[1]);
+    ctx.fillStyle=near?'#1b1b18':'#6b6a5c';ctx.fillText(city.name,rect.x,q[1]);
+    cityLabels.push(rect);
+  }
 }
 function drawStorms(now){
+  const renderTime=overview && S.mode==='season'?S.t1:S.time;
   const center=[-S.rotate[0],-S.rotate[1]];
   const focus = S.hover || S.selected;
   ctx.lineCap='round'; ctx.lineJoin='round';
   const heads=[];
   for (const s of S.visible){
-    if (s.startMs > S.time) continue;
+    if (s.startMs > renderTime) continue;
     const isFocus = focus===s;
     let alpha = 1;
-    if (focus && !isFocus) alpha = S.mode==='storm' ? 0.12 : 0.28;
-    else if (S.mode==='season' && s.endMs < S.time) alpha = 0.75;
+    if (focus && !isFocus) alpha = S.mode==='storm' ? 0.12 : 0.34;
+    else if (S.mode==='season' && s.endMs < renderTime) alpha = 0.55;
     const segs=[];
     const tr=s.track;
     for (let i=1;i<tr.length;i++){
-      const a=tr[i-1]; if (a.ms>S.time) break;
+      const a=tr[i-1]; if (a.ms>renderTime) break;
       const b=tr[i]; let bl=b.lon, bb=b.lat;
-      if (b.ms>S.time){ const f=(S.time-a.ms)/(b.ms-a.ms); bl=a.lon+(b.lon-a.lon)*f; bb=a.lat+(b.lat-a.lat)*f; }
+      if (b.ms>renderTime){ const f=(renderTime-a.ms)/(b.ms-a.ms); bl=a.lon+(b.lon-a.lon)*f; bb=a.lat+(b.lat-a.lat)*f; }
       const da=d3.geoDistance(center,[a.lon,a.lat]), db=d3.geoDistance(center,[bl,bb]);
       if (da>1.56 || db>1.56) continue;
       const pa=projection([a.lon,a.lat]), pb=projection([bl,bb]);
@@ -549,65 +472,118 @@ function drawStorms(now){
       const fade = Math.min(1, (1.56-Math.max(da,db))/0.25);
       segs.push({pa,pb,w:a.w,fade});
     }
-    const lw = isFocus ? 3 : (S.scale>1.8 ? 2.2 : 1.7);
+    const lw = isFocus ? 2.8 : 2.1;
     // white casing so tracks separate from land and from each other
     ctx.globalAlpha=alpha*0.9; ctx.strokeStyle='#ffffff'; ctx.lineWidth=lw+2.5;
     ctx.beginPath(); for (const g of segs){ ctx.moveTo(g.pa[0],g.pa[1]); ctx.lineTo(g.pb[0],g.pb[1]); } ctx.stroke();
     for (const g of segs){ ctx.beginPath(); ctx.moveTo(g.pa[0],g.pa[1]); ctx.lineTo(g.pb[0],g.pb[1]);
       ctx.strokeStyle=colorOf(g.w); ctx.globalAlpha=alpha*g.fade; ctx.lineWidth=g.w<34?lw*0.6:lw; ctx.stroke(); }
-    // landfall marks
-    for (const l of s.landfalls){ if (l.ms>S.time) continue; if (d3.geoDistance(center,[l.lon,l.lat])>1.5) continue;
-      const q=projection([l.lon,l.lat]); if(!q) continue;
-      ctx.globalAlpha=alpha; ctx.strokeStyle='#121212'; ctx.lineWidth=1.2;
-      ctx.beginPath(); ctx.moveTo(q[0]-4,q[1]-4); ctx.lineTo(q[0]+4,q[1]+4); ctx.moveTo(q[0]+4,q[1]-4); ctx.lineTo(q[0]-4,q[1]+4); ctx.stroke(); }
-    if (S.time<=s.endMs){ const p=posAt(s,S.time); if (d3.geoDistance(center,[p.lon,p.lat])<1.5){ const q=projection([p.lon,p.lat]); if(q) heads.push({s,p,q,alpha,isFocus}); } }
+    if (renderTime<=s.endMs){ const p=posAt(s,renderTime); if (d3.geoDistance(center,[p.lon,p.lat])<1.5){ const q=projection([p.lon,p.lat]); if(q) heads.push({s,p,q,alpha,isFocus}); } }
   }
   ctx.globalAlpha=1;
   for (const h of heads){
-    const col=colorOf(h.p.w), r=3.5+Math.max(0,h.p.w-30)/30;
-    const pulse=((now/1400)+h.s.startMs/1e7)%1;
-    ctx.globalAlpha=h.alpha*(1-pulse)*0.6; ctx.strokeStyle=col; ctx.lineWidth=1.2;
-    ctx.beginPath(); ctx.arc(h.q[0],h.q[1],r+2+pulse*16,0,Math.PI*2); ctx.stroke();
+    const col=colorOf(h.p.w), r=4+Math.max(0,h.p.w-30)/34;
     ctx.globalAlpha=h.alpha; ctx.fillStyle=col; ctx.strokeStyle='#ffffff'; ctx.lineWidth=2;
     ctx.beginPath(); ctx.arc(h.q[0],h.q[1],r,0,Math.PI*2); ctx.fill(); ctx.stroke();
     if (S.mode==='season' || h.isFocus){
-      ctx.globalAlpha=h.alpha; ctx.font='700 11px "Libre Franklin", sans-serif'; ctx.textBaseline='middle';
+      ctx.globalAlpha=h.alpha; ctx.font='700 11.5px "Libre Franklin", sans-serif'; ctx.textBaseline='middle';
       const label=h.s.name, wk=Math.round(h.p.w)+' kt';
-      ctx.lineWidth=3; ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.strokeText(label,h.q[0]+r+7,h.q[1]);
-      ctx.fillStyle='#121212'; ctx.fillText(label,h.q[0]+r+7,h.q[1]);
-      if (h.isFocus){ ctx.font='500 10px "Libre Franklin", sans-serif'; ctx.strokeText(wk,h.q[0]+r+7,h.q[1]+13); ctx.fillStyle='#727272'; ctx.fillText(wk,h.q[0]+r+7,h.q[1]+13); }
+      ctx.lineWidth=3.4; ctx.strokeStyle='rgba(255,255,255,.92)'; ctx.strokeText(label,h.q[0]+r+8,h.q[1]);
+      ctx.fillStyle='#171716'; ctx.fillText(label,h.q[0]+r+8,h.q[1]);
+      if (h.isFocus){ ctx.font='500 10px "Libre Franklin", sans-serif'; ctx.strokeText(wk,h.q[0]+r+8,h.q[1]+14); ctx.fillStyle='#6b6a5c'; ctx.fillText(wk,h.q[0]+r+8,h.q[1]+14); }
     }
   }
   ctx.globalAlpha=1;
 }
 function updateChrome(){
   const d=new Date(S.time);
-  clockD.textContent=fmtDate(d); clockH.textContent=fmtTime(d)+(S.mode==='storm'&&S.selected?`  ·  ${Math.round(posAt(S.selected,S.time).w)} kt`:'');
-  if (tlPlayhead && tlX) tlPlayhead.attr('transform',`translate(${tlX(S.time)},0)`);
+  clockD.textContent=fmtShort(d);
   document.body.classList.toggle('playing', S.playing);
   document.body.classList.toggle('ended', S.ended);
-  updateCardStates();
+  playBtn.setAttribute('aria-label',S.playing?'Pause':S.ended?'Replay':'Play');
+  scrubber.value=Math.round((S.time-S.t0)/(S.t1-S.t0)*10000);scrubber.setAttribute('aria-valuetext',fmtDate(d)+' '+fmtTime(d));
 }
 
-let last=performance.now();
-function frame(now){
-  const dt=Math.min(0.1,(now-last)/1000); last=now;
-  if (S.fly){ const t=Math.min(1,(now-S.fly.start)/S.fly.dur); S.fly.step(t); if (t>=1){ const f=S.fly; S.fly=null; f.onEnd&&f.onEnd(); } }
-  else if (S.mode==='season' && !S.dragging && now-S.lastInteract>6000){ S.rotate[0]+=dt*0.9; }
-  if (S.playing && !S.scrubbing){
-    S.time += hoursPerSec()*36e5*dt;
-    if (S.time>=S.t1){ S.time=S.t1; S.playing=false; S.ended=true; }
+/* Cached rail nodes: scan at 10Hz, reconcile immediately on user time jumps. */
+const rail=document.getElementById('active-rows'),quiet=document.getElementById('quiet'),vitals=document.getElementById('vitals');
+let lastRail=-Infinity,railSelection=null;
+const railRows=new Map();
+function renderRail(){
+  updateNearby();
+  const active=S.mode==='storm'?[S.selected]:S.visible.filter(s=>S.time>=s.startMs&&S.time<=s.endMs);
+  rail.hidden=S.mode==='storm';vitals.hidden=S.mode!=='storm';quiet.hidden=active.length>0;
+  if(S.mode==='storm'){
+    const s=S.selected,p=posAt(s,S.time),landfalls=s.landfalls.filter(l=>l.ms<=S.time).length;
+    if(railSelection!==s){
+      railSelection=s;
+      vitals.innerHTML=`<p class="storm-name">${s.name}</p><p class="current-wind"></p><p>Peak ${s.peak} kt · ${s.minp??'—'} hPa minimum<br>${s.days.toFixed(1)} days</p><p class="current-landfalls"></p><details><summary>${s.landfalls.length} recorded landfall${s.landfalls.length===1?'':'s'} · full record</summary><ul>${s.landfalls.map(l=>`<li>${fmtDate(new Date(l.ms))} · ${fmtTime(new Date(l.ms))}</li>`).join('')}</ul></details>`;
+    }
+    vitals.querySelector('.current-wind').textContent=`${CATS[catOf(p.w)+1].short} · ${Math.round(p.w)} kt now`;
+    vitals.querySelector('.current-landfalls').textContent=`${landfalls} landfall${landfalls===1?'':'s'} so far`;
+  }else{
+    railSelection=null;
+    for(const s of active){
+      let row=railRows.get(s.id);
+      if(!row){const el=document.createElement('div');el.className='active-row';el.dataset.stormId=s.id;el.innerHTML=`<strong>${s.name}</strong><small></small><small class="impact"></small>`;row={el,wind:el.querySelector('small'),impact:el.querySelector('.impact')};railRows.set(s.id,row);}
+      if(!row.el.isConnected){rail.appendChild(row.el);obstaclesDirty=true;}
+      const p=posAt(s,S.time),landfalls=s.landfalls.filter(l=>l.ms<=S.time).length;
+      const wind=`${CATS[catOf(p.w)+1].short} · ${Math.round(p.w)} kt`,impact=landfalls?`${landfalls} recorded landfall${landfalls===1?'':'s'}`:'No landfalls recorded yet';
+      if(row.wind.textContent!==wind)row.wind.textContent=wind;
+      if(row.impact.textContent!==impact)row.impact.textContent=impact;
+    }
+    for(const [id,row] of railRows)if(!active.some(s=>s.id===id)){if(row.el.isConnected)obstaclesDirty=true;row.el.remove();}
   }
-  drawGlobe(); drawStorms(now); hitTest(); updateChrome();
-  requestAnimationFrame(frame);
 }
+function paint(now=performance.now()){drawGlobe();drawCities();drawStorms(now);updateChrome();}
+function refresh(){renderRail();updateCardStates();paint();}
 
-/* ---------------- boot ---------------- */
-applyFilters();
-document.getElementById('loading').classList.add('off');
-const c0=basinCenter(); flyTo(c0[0],c0[1],1,2600);
-requestAnimationFrame(frame);
-})();
+/* Hero: one raster per actual size, no drawing loop. */
+const hero=document.getElementById('hero'),heroCanvas=document.getElementById('hero-field');
+const heroGeometry=storms.map(s=>s.track.slice(1).map((b,i)=>({type:'LineString',coordinates:[[s.track[i].lon,s.track[i].lat],[b.lon,b.lat]],color:colorOf(s.track[i].w)})));
+let heroKey='',heroDraws=0;
+function drawHero(){
+  const w=hero.clientWidth,h=hero.clientHeight,dpr=Math.min(1.5,devicePixelRatio||1,Math.sqrt(1.5e6/(w*h)));
+  const key=w+','+h+','+dpr;if(heroKey===key)return;heroKey=key;heroDraws++;
+  heroCanvas.width=Math.floor(w*dpr);heroCanvas.height=Math.floor(h*dpr);
+  const c=heroCanvas.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);
+  const proj=d3.geoEquirectangular().center([-100,22]).scale(Math.max(w/3.6,h/1.6)).translate([w*.61,h*.58]);
+  const hp=d3.geoPath(proj,c);c.lineWidth=.75;c.globalAlpha=.65;
+  for(const track of heroGeometry)for(const segment of track){c.beginPath();hp(segment);c.strokeStyle=segment.color;c.stroke();}
+}
+const ledger=[['Storms',storms.length],['Seasons',YEARS.length],['Major hurricanes',storms.filter(s=>s.cat>=3).length],['Category 5',storms.filter(s=>s.cat===5).length],['Landfall events',storms.reduce((n,s)=>n+s.landfalls.length,0)]];
+document.getElementById('ledger').innerHTML=ledger.map(([label,n])=>`<div class="ledger-item"><b>${n}</b><span>${label}</span></div>`).join('');
+
+let last=performance.now(),raf=0,inView=false,booted=false,frameCount=0;
+function frame(now){
+  raf=0;if(!inView||document.hidden)return;
+  const dt=Math.min(.1,Math.max(0,(now-last)/1000));last=now;frameCount++;
+  if(S.fly){S.fly.elapsed+=dt*1000;const t=Math.min(1,S.fly.elapsed/S.fly.dur);S.fly.step(t);if(t>=1){const f=S.fly;S.fly=null;f.onEnd?.();}}
+  if(S.playing&&!S.scrubbing){S.time+=hoursPerSec()*36e5*dt;if(S.time>=S.t1){S.time=S.t0;S.ended=false;}}
+  paint(now);hitTest();
+  if(now-lastRail>=100){lastRail=now;renderRail();updateCardStates();}
+  raf=requestAnimationFrame(frame);
+}
+function syncLoop(){
+  if(inView&&!document.hidden){if(!raf){last=performance.now();raf=requestAnimationFrame(frame);}}
+  else {cancelAnimationFrame(raf);raf=0;}
+}
+applyFilters();const initial=seasonView();S.rotate=[-initial.lon,-initial.lat,0];S.scale=initial.scale;
+refresh();drawHero();document.getElementById('loading').classList.add('off');document.getElementById('loading').setAttribute('aria-hidden','true');
+const observer=new IntersectionObserver(entries=>{
+  const e=entries[0];inView=e.isIntersecting&&e.intersectionRatio>=.05;
+  if(!booted&&e.intersectionRatio>=.35){booted=true;if(!userInteracted&&!reducedMotion){S.playing=true;}}
+  syncLoop();
+},{threshold:[0,.05,.35]});observer.observe(atlasFrame);
+document.addEventListener('visibilitychange',syncLoop);
+motionQuery.addEventListener('change',e=>{reducedMotion=e.matches;if(reducedMotion){S.playing=false;if(S.fly){S.fly.step(1);S.fly=null;}}refresh();});
+let resizeRaf=0;
+function queueResize(){if(resizeRaf)return;resizeRaf=requestAnimationFrame(()=>{resizeRaf=0;const changed=resize();drawHero();if(changed||!raf)refresh();});}
+const resizeObserver=new ResizeObserver(queueResize);resizeObserver.observe(stage);resizeObserver.observe(hero);
+window.addEventListener('resize',queueResize);
+if(new URLSearchParams(location.search).has('debug')){
+  window.__atlasDebug=Object.freeze({snapshot:()=>({frameCount,running:!!raf,inView,booted,time:S.time,t0:S.t0,t1:S.t1,playing:S.playing,mode:S.mode,selected:S.selected?.id??null,flightElapsed:S.fly?.elapsed??null,rotate:S.rotate.slice(),scale:S.scale,reducedMotion,overview,heroDraws,heroPixels:heroCanvas.width*heroCanvas.height,globePixels:canvas.width*canvas.height,nearbyCities:nearbyCities.map(c=>c.name),cityLabels:cityLabels.length,stateLines:mapContext.states.coordinates.length})});
+}
+})().catch(error=>{const loading=document.getElementById('loading');loading.classList.remove('off');loading.textContent='The atlas could not be loaded. Please reload to try again. '+error.message;loading.setAttribute('role','alert');});
 </script>
 </body>
 </html>
